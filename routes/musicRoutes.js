@@ -1,13 +1,15 @@
 import express from 'express';
 import { getMusic, createMusic, updateMusic, deleteMusic, getMusicByCategory } from '../controllers/musicController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { requireSubscription } from '../middleware/subscriptionMiddleware.js';
 import { adminOnly } from '../middleware/adminMiddleware.js';
 import upload from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
-router.get('/', getMusic); // Public access
-router.get('/category/:categoryId', getMusicByCategory); // Public access to get music by category
+// Music access now requires authentication and active subscription
+router.get('/', protect, requireSubscription, getMusic);
+router.get('/category/:categoryId', protect, requireSubscription, getMusicByCategory);
 router.post(
   '/create',
   protect,

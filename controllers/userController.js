@@ -55,12 +55,24 @@ const authUser = asyncHandler(async (req, res) => {
       sameSite: 'strict',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     });
+    
+    // Include subscription status in login response
+    let subscriptionStatus = null;
+    if (user.subscription && user.subscription.id) {
+      subscriptionStatus = {
+        id: user.subscription.id,
+        status: user.subscription.status,
+        isActive: user.subscription.status === 'active' || user.subscription.status === 'trialing'
+      };
+    }
+    
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       token,
+      subscription: subscriptionStatus,
     });
   } else {
     res.status(401);
