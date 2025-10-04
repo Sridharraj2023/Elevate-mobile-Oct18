@@ -10,7 +10,14 @@ const router = express.Router();
 // Music access now requires authentication and active subscription
 router.get('/', protect, requireSubscription, getMusic);
 router.get('/category/:categoryId', protect, requireSubscription, getMusicByCategory);
-router.post('/upload', protect, adminOnly, upload.single('audio'), uploadFile); // Bulk file upload
+router.post('/upload', protect, adminOnly, (req, res, next) => {
+  upload(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ message: 'File upload error', error: err.message });
+    }
+    next();
+  });
+}, uploadFile); // Bulk file upload
 router.post(
   '/create',
   protect,

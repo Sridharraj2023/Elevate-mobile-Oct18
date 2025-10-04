@@ -252,20 +252,27 @@ const deleteMusic = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const uploadFile = asyncHandler(async (req, res) => {
   try {
-    if (!req.file) {
+    // The upload middleware uses .fields() so files are in req.files
+    const audioFile = req.files?.file?.[0];
+    const thumbnailFile = req.files?.thumbnail?.[0];
+    
+    if (!audioFile && !thumbnailFile) {
       return res.status(400).json({ 
         success: false,
         message: 'No file uploaded' 
       });
     }
 
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // Return the first available file (audio takes priority)
+    const uploadedFile = audioFile || thumbnailFile;
+    const fileUrl = `/uploads/${uploadedFile.filename}`;
     
     res.json({
       success: true,
       message: 'File uploaded successfully',
       fileUrl: fileUrl,
-      filename: req.file.filename
+      filename: uploadedFile.filename,
+      fieldname: uploadedFile.fieldname
     });
   } catch (error) {
     console.error('File upload error:', error);
