@@ -7,7 +7,11 @@ import upload from '../middleware/uploadMiddleware.js';
 
 const router = express.Router();
 
-// Music access now requires authentication and active subscription
+// Admin routes (no subscription required)
+router.get('/admin', protect, adminOnly, getMusic);
+router.get('/admin/category/:categoryId', protect, adminOnly, getMusicByCategory);
+
+// Public/User routes (requires authentication and active subscription)
 router.get('/', protect, requireSubscription, getMusic);
 router.get('/category/:categoryId', protect, requireSubscription, getMusicByCategory);
 router.post('/upload', protect, adminOnly, (req, res, next) => {
