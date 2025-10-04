@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMusic, createMusic, updateMusic, deleteMusic, getMusicByCategory } from '../controllers/musicController.js';
+import { getMusic, createMusic, updateMusic, deleteMusic, getMusicByCategory, uploadFile } from '../controllers/musicController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { requireSubscription } from '../middleware/subscriptionMiddleware.js';
 import { adminOnly } from '../middleware/adminMiddleware.js';
@@ -10,6 +10,7 @@ const router = express.Router();
 // Music access now requires authentication and active subscription
 router.get('/', protect, requireSubscription, getMusic);
 router.get('/category/:categoryId', protect, requireSubscription, getMusicByCategory);
+router.post('/upload', protect, adminOnly, upload.single('audio'), uploadFile); // Bulk file upload
 router.post(
   '/create',
   protect,

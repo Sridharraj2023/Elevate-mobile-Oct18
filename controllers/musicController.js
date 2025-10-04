@@ -247,4 +247,34 @@ const deleteMusic = asyncHandler(async (req, res) => {
   res.json({ message: 'Music deleted successfully' });
 });
 
-export { getMusic, getMusicByCategory, createMusic, updateMusic, deleteMusic };
+// @desc    Upload a single file (for bulk upload)
+// @route   POST /api/music/upload
+// @access  Private/Admin
+const uploadFile = asyncHandler(async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'No file uploaded' 
+      });
+    }
+
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    res.json({
+      success: true,
+      message: 'File uploaded successfully',
+      fileUrl: fileUrl,
+      filename: req.file.filename
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Server Error',
+      error: error.message 
+    });
+  }
+});
+
+export { getMusic, getMusicByCategory, createMusic, updateMusic, deleteMusic, uploadFile };
