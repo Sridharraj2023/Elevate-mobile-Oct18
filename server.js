@@ -96,8 +96,8 @@ const corsOptions = {
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Range', 'If-Range'],
   optionsSuccessStatus: 200
 };
 
@@ -106,7 +106,16 @@ app.options('*', cors(corsOptions));
 
 
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Use path.join for cross-platform compatibility
+// Serve static uploads with proper CORS and range support for media
+app.use(
+  '/uploads',
+  cors(corsOptions),
+  (req, res, next) => {
+    res.setHeader('Accept-Ranges', 'bytes');
+    next();
+  },
+  express.static(path.join(__dirname, 'uploads'))
+); // Use path.join for cross-platform compatibility
 
 app.use((req, res, next) => {
   console.log('CORS headers set for:', req.method, req.url);
