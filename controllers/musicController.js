@@ -35,7 +35,7 @@ const getMusicByCategory = asyncHandler(async (req, res) => {
     }
 
     const musicWithUrls = musicList.map(music => {
-      const baseUrl = `${process.env.BASE_URL}/uploads/`;
+      // Always return relative URLs so clients can prepend their own base
       const fileName = music.fileUrl ? path.basename(music.fileUrl) : null;
       const thumbnailName = music.thumbnailUrl ? path.basename(music.thumbnailUrl) : null;
 
@@ -48,8 +48,8 @@ const getMusicByCategory = asyncHandler(async (req, res) => {
 
       return {
         ...music._doc,
-        fileUrl: fileName ? `${baseUrl}${fileName}` : null,
-        thumbnailUrl: thumbnailName ? `${baseUrl}${thumbnailName}` : null,
+        fileUrl: fileName ? `/uploads/${fileName}` : null,
+        thumbnailUrl: thumbnailName ? `/uploads/${thumbnailName}` : null,
         category: music.category ? {
           _id: music.category._id,
           name: music.category.name,
@@ -79,7 +79,7 @@ const getMusic = asyncHandler(async (req, res) => {
     });
 
     const musicWithUrls = musicList.map(music => {
-      const baseUrl = `${process.env.BASE_URL}/uploads/`;
+      // Always return relative URLs so clients can prepend their own base
       const fileName = music.fileUrl ? path.basename(music.fileUrl) : null;
       const thumbnailName = music.thumbnailUrl ? path.basename(music.thumbnailUrl) : null;
 
@@ -93,8 +93,8 @@ const getMusic = asyncHandler(async (req, res) => {
 
       return {
         ...music._doc,
-        fileUrl: fileName ? `${baseUrl}${fileName}` : null,
-        thumbnailUrl: thumbnailName ? `${baseUrl}${thumbnailName}` : null,
+        fileUrl: fileName ? `/uploads/${fileName}` : null,
+        thumbnailUrl: thumbnailName ? `/uploads/${thumbnailName}` : null,
         category: music.category ? {
           _id: music.category._id,
           name: music.category.name,
