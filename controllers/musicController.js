@@ -179,7 +179,15 @@ const updateMusic = asyncHandler(async (req, res) => {
       return res.status(404).json({ message: 'Music not found' });
     }
 
-    // Handle file updates
+    // Allow direct URL updates (admin metadata fix without re-uploading files)
+    if (req.body.fileUrl) {
+      music.fileUrl = req.body.fileUrl;
+    }
+    if (req.body.thumbnailUrl) {
+      music.thumbnailUrl = req.body.thumbnailUrl;
+    }
+
+    // Handle file uploads (if provided)
     const audioFile = req.files?.file?.[0];
     const thumbnailFile = req.files?.thumbnail?.[0];
 
