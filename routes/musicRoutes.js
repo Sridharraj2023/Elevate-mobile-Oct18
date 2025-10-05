@@ -1,5 +1,5 @@
 import express from 'express';
-import { getMusic, createMusic, updateMusic, deleteMusic, getMusicByCategory, uploadFile } from '../controllers/musicController.js';
+import { getMusic, createMusic, updateMusic, deleteMusic, getMusicByCategory, uploadFile, updateDatabaseUrls } from '../controllers/musicController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { requireSubscription } from '../middleware/subscriptionMiddleware.js';
 import { adminOnly } from '../middleware/adminMiddleware.js';
@@ -22,6 +22,10 @@ router.post('/upload', protect, adminOnly, (req, res, next) => {
     next();
   });
 }, uploadFile); // Bulk file upload
+
+// Update database URLs from local to production
+router.post('/update-urls', protect, adminOnly, updateDatabaseUrls);
+
 router.post(
   '/create',
   protect,
