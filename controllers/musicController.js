@@ -292,7 +292,7 @@ const updateDatabaseUrls = asyncHandler(async (req, res) => {
     console.log('🔄 Starting database URL update...');
     
     // Find all music records with local server URLs
-    const localServerPattern = /192\.168\.0\.100:5000/;
+    const localServerPattern = /192\.168\.0\.100/;
     const musicRecords = await Music.find({
       $or: [
         { fileUrl: { $regex: localServerPattern } },
@@ -319,7 +319,7 @@ const updateDatabaseUrls = asyncHandler(async (req, res) => {
       const updateData = {};
 
       // Update fileUrl if it contains local server URL
-      if (music.fileUrl && music.fileUrl.includes('192.168.0.100:5000')) {
+      if (music.fileUrl && music.fileUrl.includes('192.168.0.100')) {
         const newFileUrl = music.fileUrl.replace(
           'http://192.168.0.100:5000',
           'https://elevate-backend-s28.onrender.com'
@@ -330,7 +330,7 @@ const updateDatabaseUrls = asyncHandler(async (req, res) => {
       }
 
       // Update thumbnailUrl if it contains local server URL
-      if (music.thumbnailUrl && music.thumbnailUrl.includes('192.168.0.100:5000')) {
+      if (music.thumbnailUrl && music.thumbnailUrl.includes('192.168.0.100')) {
         const newThumbnailUrl = music.thumbnailUrl.replace(
           'http://192.168.0.100:5000',
           'https://elevate-backend-s28.onrender.com'
