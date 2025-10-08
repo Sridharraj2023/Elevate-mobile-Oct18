@@ -367,8 +367,8 @@ export const getCurrentSubscriptionPlan = async (req, res) => {
       dynamicAudioFeatures: currentPlan.dynamicAudioFeatures,
       customTrackRequests: currentPlan.customTrackRequests,
       priceId: currentPlan.stripePriceId, // Keep for backward compatibility
-      monthlyPriceId: currentPlan.stripeMonthlyPriceId || currentPlan.stripePriceId,
-      yearlyPriceId: currentPlan.stripeYearlyPriceId || currentPlan.stripePriceId,
+      monthlyPriceId: currentPlan.stripeMonthlyPriceId || currentPlan.stripePriceId || '',
+      yearlyPriceId: currentPlan.stripeYearlyPriceId || currentPlan.stripePriceId || '',
       description: currentPlan.description,
       features: currentPlan.features
     };
