@@ -64,6 +64,14 @@ const subscriptionPlanSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  stripeMonthlyPriceId: {
+    type: String,
+    trim: true
+  },
+  stripeYearlyPriceId: {
+    type: String,
+    trim: true
+  },
   stripeProductId: {
     type: String,
     trim: true

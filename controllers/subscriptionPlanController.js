@@ -114,8 +114,10 @@ export const createSubscriptionPlan = async (req, res) => {
       }
     }
 
-    // Create Stripe product and price if Stripe is available
+    // Create Stripe product and prices if Stripe is available
     let stripePriceId = '';
+    let stripeMonthlyPriceId = '';
+    let stripeYearlyPriceId = '';
     let stripeProductId = '';
 
     if (stripe) {
@@ -133,7 +135,7 @@ export const createSubscriptionPlan = async (req, res) => {
         stripeProductId = product.id;
 
         // Create Stripe price for monthly subscription
-        const price = await stripe.prices.create({
+        const monthlyPrice = await stripe.prices.create({
           product: stripeProductId,
           unit_amount: Math.round(monthlyCost * 100), // Convert to cents
           currency: 'usd',
@@ -146,11 +148,29 @@ export const createSubscriptionPlan = async (req, res) => {
           }
         });
 
-        stripePriceId = price.id;
+        stripeMonthlyPriceId = monthlyPrice.id;
+        stripePriceId = monthlyPrice.id; // Keep for backward compatibility
 
-        console.log('Created Stripe product and price:', {
+        // Create Stripe price for yearly subscription
+        const yearlyPrice = await stripe.prices.create({
+          product: stripeProductId,
+          unit_amount: Math.round(annualCost * 100), // Convert to cents
+          currency: 'usd',
+          recurring: {
+            interval: 'year'
+          },
+          metadata: {
+            plan_title: title,
+            billing_period: 'yearly'
+          }
+        });
+
+        stripeYearlyPriceId = yearlyPrice.id;
+
+        console.log('Created Stripe product and prices:', {
           productId: stripeProductId,
-          priceId: stripePriceId
+          monthlyPriceId: stripeMonthlyPriceId,
+          yearlyPriceId: stripeYearlyPriceId
         });
       } catch (stripeError) {
         console.error('Stripe error creating product/price:', stripeError);
@@ -163,6 +183,7 @@ export const createSubscriptionPlan = async (req, res) => {
     } else {
       // Use environment variable as fallback
       stripePriceId = process.env.STRIPE_PRICE_ID || '';
+      stripeMonthlyPriceId = process.env.STRIPE_PRICE_ID || '';
     }
 
     // Create subscription plan
@@ -178,6 +199,8 @@ export const createSubscriptionPlan = async (req, res) => {
       dynamicAudioFeatures,
       customTrackRequests,
       stripePriceId,
+      stripeMonthlyPriceId,
+      stripeYearlyPriceId,
       stripeProductId,
       description,
       features: features || [],
@@ -343,7 +366,9 @@ export const getCurrentSubscriptionPlan = async (req, res) => {
       soundscapeTracks: currentPlan.soundscapeTracks,
       dynamicAudioFeatures: currentPlan.dynamicAudioFeatures,
       customTrackRequests: currentPlan.customTrackRequests,
-      priceId: currentPlan.stripePriceId,
+      priceId: currentPlan.stripePriceId, // Keep for backward compatibility
+      monthlyPriceId: currentPlan.stripeMonthlyPriceId || currentPlan.stripePriceId,
+      yearlyPriceId: currentPlan.stripeYearlyPriceId || currentPlan.stripePriceId,
       description: currentPlan.description,
       features: currentPlan.features
     };
