@@ -260,8 +260,8 @@ export const getSubscriptionStatus = async (req, res) => {
     // Get latest subscription data from Stripe
     const subscription = await stripe.subscriptions.retrieve(user.subscription.id);
 
-    // Get interval from subscription
-    const interval = subscription.items.data[0]?.plan?.interval || 'month';
+    // Get interval from user's database record (more reliable than Stripe)
+    const interval = user.subscription.interval || subscription.items.data[0]?.plan?.interval || 'month';
     
     const response = {
       subscription: {
@@ -271,7 +271,7 @@ export const getSubscriptionStatus = async (req, res) => {
         currentPeriodEnd: subscription.current_period_end,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         plan: subscription.items.data[0]?.price?.id,
-        interval: interval,  // Add interval info
+        interval: interval,  // Use interval from user's database record
         isActive: subscription.status === 'active' || subscription.status === 'trialing'
       }
     };
