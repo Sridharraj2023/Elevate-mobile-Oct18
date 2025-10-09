@@ -40,12 +40,24 @@ export const handleWebhook = async (req, res) => {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         
         if (subscription.status === 'active' || subscription.status === 'trialing') {
+          // Safely set currentPeriodEnd with validation
+          let currentPeriodEnd;
+          if (subscription.current_period_end) {
+            currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+          } else {
+            // Fallback: set based on interval
+            const interval = subscription.items.data[0]?.plan?.interval || 'month';
+            const validityDays = interval === 'year' ? 365 : 30;
+            currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+          }
+          
           await User.findOneAndUpdate(
             { 'subscription.id': subscriptionId },
             { 
               'subscription.status': subscription.status,
-              'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000),
-              'subscription.paymentDate': new Date()
+              'subscription.currentPeriodEnd': currentPeriodEnd,
+              'subscription.paymentDate': new Date(),
+              'subscription.interval': subscription.items.data[0]?.plan?.interval || 'month'
             }
           );
           console.log('Updated subscription status to active for subscription:', subscriptionId);
@@ -71,12 +83,24 @@ export const handleWebhook = async (req, res) => {
         });
         
         if (subscription.status === 'active' || subscription.status === 'trialing') {
+          // Safely set currentPeriodEnd with validation
+          let currentPeriodEnd;
+          if (subscription.current_period_end) {
+            currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+          } else {
+            // Fallback: set based on interval
+            const interval = subscription.items.data[0]?.plan?.interval || 'month';
+            const validityDays = interval === 'year' ? 365 : 30;
+            currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+          }
+          
           await User.findOneAndUpdate(
             { 'subscription.id': subscriptionId },
             { 
               'subscription.status': subscription.status,
-              'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000),
-              'subscription.paymentDate': new Date()
+              'subscription.currentPeriodEnd': currentPeriodEnd,
+              'subscription.paymentDate': new Date(),
+              'subscription.interval': subscription.items.data[0]?.plan?.interval || 'month'
             }
           );
           console.log('Updated subscription status to active for subscription:', subscriptionId);
@@ -86,12 +110,22 @@ export const handleWebhook = async (req, res) => {
           try {
             console.log('Payment succeeded via webhook, marking subscription as active in database...');
             
-            // Use Stripe's actual currentPeriodEnd instead of hardcoded 30 days
+            // Safely set currentPeriodEnd with validation
+            let currentPeriodEnd;
+            if (subscription.current_period_end) {
+              currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+            } else {
+              // Fallback: set based on interval
+              const interval = subscription.items.data[0]?.plan?.interval || 'month';
+              const validityDays = interval === 'year' ? 365 : 30;
+              currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+            }
+            
             await User.findOneAndUpdate(
               { 'subscription.id': subscriptionId },
               { 
                 'subscription.status': 'active',
-                'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000),
+                'subscription.currentPeriodEnd': currentPeriodEnd,
                 'subscription.paymentDate': new Date(),
                 'subscription.interval': subscription.items.data[0]?.plan?.interval || 'month'
               }
@@ -113,12 +147,25 @@ export const handleWebhook = async (req, res) => {
     case 'customer.subscription.created':
       const subscriptionCreated = event.data.object;
       console.log('Subscription created:', subscriptionCreated.id);
+      
+      // Safely set currentPeriodEnd with validation
+      let currentPeriodEnd;
+      if (subscriptionCreated.current_period_end) {
+        currentPeriodEnd = new Date(subscriptionCreated.current_period_end * 1000);
+      } else {
+        // Fallback: set based on interval
+        const interval = subscriptionCreated.items.data[0]?.plan?.interval || 'month';
+        const validityDays = interval === 'year' ? 365 : 30;
+        currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+      }
+      
       await User.findOneAndUpdate(
         { stripeCustomerId: subscriptionCreated.customer },
         { 
           'subscription.status': subscriptionCreated.status,
-          'subscription.currentPeriodEnd': new Date(subscriptionCreated.current_period_end * 1000),
-          'subscription.paymentDate': new Date()
+          'subscription.currentPeriodEnd': currentPeriodEnd,
+          'subscription.paymentDate': new Date(),
+          'subscription.interval': subscriptionCreated.items.data[0]?.plan?.interval || 'month'
         }
       );
       break;
@@ -126,12 +173,25 @@ export const handleWebhook = async (req, res) => {
     case 'customer.subscription.updated':
       const subscriptionUpdated = event.data.object;
       console.log('Subscription updated:', subscriptionUpdated.id);
+      
+      // Safely set currentPeriodEnd with validation
+      let currentPeriodEndUpdated;
+      if (subscriptionUpdated.current_period_end) {
+        currentPeriodEndUpdated = new Date(subscriptionUpdated.current_period_end * 1000);
+      } else {
+        // Fallback: set based on interval
+        const interval = subscriptionUpdated.items.data[0]?.plan?.interval || 'month';
+        const validityDays = interval === 'year' ? 365 : 30;
+        currentPeriodEndUpdated = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+      }
+      
       await User.findOneAndUpdate(
         { stripeCustomerId: subscriptionUpdated.customer },
         { 
           'subscription.status': subscriptionUpdated.status,
-          'subscription.currentPeriodEnd': new Date(subscriptionUpdated.current_period_end * 1000),
-          'subscription.paymentDate': new Date()
+          'subscription.currentPeriodEnd': currentPeriodEndUpdated,
+          'subscription.paymentDate': new Date(),
+          'subscription.interval': subscriptionUpdated.items.data[0]?.plan?.interval || 'month'
         }
       );
       break;
@@ -481,8 +541,19 @@ export const fixSubscriptionStatus = async (req, res) => {
         
         // Update user subscription status
         user.subscription.status = currentSubscription.status;
-        user.subscription.currentPeriodEnd = new Date(currentSubscription.current_period_end * 1000);
+        
+        // Safely set currentPeriodEnd with validation
+        if (currentSubscription.current_period_end) {
+          user.subscription.currentPeriodEnd = new Date(currentSubscription.current_period_end * 1000);
+        } else {
+          // Fallback: set based on interval
+          const interval = currentSubscription.items.data[0]?.plan?.interval || 'month';
+          const validityDays = interval === 'year' ? 365 : 30;
+          user.subscription.currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+        }
+        
         user.subscription.paymentDate = new Date();
+        user.subscription.interval = currentSubscription.items.data[0]?.plan?.interval || 'month';
         await user.save();
 
         return res.json({
@@ -500,11 +571,21 @@ export const fixSubscriptionStatus = async (req, res) => {
       // This is a workaround for Stripe's payment method reuse limitation
       console.log('Payment succeeded, marking subscription as active in database');
       
-      // Use Stripe's actual currentPeriodEnd
+      // Use Stripe's actual currentPeriodEnd from the retrieved subscription
       user.subscription.status = 'active';
-      user.subscription.currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+      
+      // Safely set currentPeriodEnd with validation
+      if (currentSubscription.current_period_end) {
+        user.subscription.currentPeriodEnd = new Date(currentSubscription.current_period_end * 1000);
+      } else {
+        // Fallback: set based on interval
+        const interval = currentSubscription.items.data[0]?.plan?.interval || 'month';
+        const validityDays = interval === 'year' ? 365 : 30;
+        user.subscription.currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+      }
+      
       user.subscription.paymentDate = new Date();
-      user.subscription.interval = subscription.items.data[0]?.plan?.interval || 'month';
+      user.subscription.interval = currentSubscription.items.data[0]?.plan?.interval || 'month';
       await user.save();
 
       return res.json({
