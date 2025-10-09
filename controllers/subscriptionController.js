@@ -86,12 +86,14 @@ export const handleWebhook = async (req, res) => {
           try {
             console.log('Payment succeeded via webhook, marking subscription as active in database...');
             
+            // Use Stripe's actual currentPeriodEnd instead of hardcoded 30 days
             await User.findOneAndUpdate(
               { 'subscription.id': subscriptionId },
               { 
                 'subscription.status': 'active',
-                'subscription.currentPeriodEnd': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-                'subscription.paymentDate': new Date()
+                'subscription.currentPeriodEnd': new Date(subscription.current_period_end * 1000),
+                'subscription.paymentDate': new Date(),
+                'subscription.interval': subscription.items.data[0]?.plan?.interval || 'month'
               }
             );
             console.log('Updated subscription to active via webhook:', subscriptionId);
@@ -198,6 +200,9 @@ export const getSubscriptionStatus = async (req, res) => {
     // Get latest subscription data from Stripe
     const subscription = await stripe.subscriptions.retrieve(user.subscription.id);
 
+    // Get interval from subscription
+    const interval = subscription.items.data[0]?.plan?.interval || 'month';
+    
     const response = {
       subscription: {
         id: subscription.id,
@@ -206,6 +211,7 @@ export const getSubscriptionStatus = async (req, res) => {
         currentPeriodEnd: subscription.current_period_end,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         plan: subscription.items.data[0]?.price?.id,
+        interval: interval,  // Add interval info
         isActive: subscription.status === 'active' || subscription.status === 'trialing'
       }
     };
@@ -494,10 +500,11 @@ export const fixSubscriptionStatus = async (req, res) => {
       // This is a workaround for Stripe's payment method reuse limitation
       console.log('Payment succeeded, marking subscription as active in database');
       
-      // Update user subscription status to active
+      // Use Stripe's actual currentPeriodEnd
       user.subscription.status = 'active';
-      user.subscription.currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+      user.subscription.currentPeriodEnd = new Date(subscription.current_period_end * 1000);
       user.subscription.paymentDate = new Date();
+      user.subscription.interval = subscription.items.data[0]?.plan?.interval || 'month';
       await user.save();
 
       return res.json({
@@ -693,29 +700,25 @@ export const getSubscriptionDetails = async (req, res) => {
     // Get latest subscription data from Stripe
     const subscription = await stripe.subscriptions.retrieve(user.subscription.id);
 
-    // Calculate countdown information
+    // Get interval from subscription
+    const interval = subscription.items.data[0]?.plan?.interval || user.subscription.interval || 'month';
+    
+    // Calculate countdown information using Stripe's actual currentPeriodEnd
     const now = new Date();
-    let paymentDate = user.subscription.paymentDate;
-    let expiryDate = null;
-    let remainingDays = 0;
+    const expiryDate = new Date(subscription.current_period_end * 1000);
+    const timeDiff = expiryDate.getTime() - now.getTime();
+    const remainingDays = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
+    
+    // Determine validity status based on remaining days
     let validityStatus = 'unknown';
-
-    // If payment date exists, calculate expiry and remaining days
-    if (paymentDate) {
-      expiryDate = new Date(paymentDate.getTime() + (user.subscription.validityDays * 24 * 60 * 60 * 1000));
-      const timeDiff = expiryDate.getTime() - now.getTime();
-      remainingDays = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)));
-
-      // Determine validity status based on remaining days
-      if (remainingDays > 7) {
-        validityStatus = 'good';
-      } else if (remainingDays > 3) {
-        validityStatus = 'warning';
-      } else if (remainingDays > 0) {
-        validityStatus = 'critical';
-      } else {
-        validityStatus = 'expired';
-      }
+    if (remainingDays > 7) {
+      validityStatus = 'good';
+    } else if (remainingDays > 3) {
+      validityStatus = 'warning';
+    } else if (remainingDays > 0) {
+      validityStatus = 'critical';
+    } else {
+      validityStatus = 'expired';
     }
 
     const response = {
@@ -726,14 +729,16 @@ export const getSubscriptionDetails = async (req, res) => {
         currentPeriodEnd: subscription.current_period_end,
         cancelAtPeriodEnd: subscription.cancel_at_period_end,
         plan: subscription.items.data[0]?.price?.id,
+        interval: interval,  // Add interval info
         isActive: subscription.status === 'active' || subscription.status === 'trialing'
       },
       paymentInfo: {
-        paymentDate: paymentDate,
+        paymentDate: user.subscription.paymentDate,
         expiryDate: expiryDate,
         remainingDays: remainingDays,
-        validityDays: user.subscription.validityDays,
-        validityStatus: validityStatus
+        validityDays: interval === 'year' ? 365 : 30,  // Dynamic validity based on interval
+        validityStatus: validityStatus,
+        interval: interval  // Add interval to payment info
       }
     };
 
@@ -1027,13 +1032,18 @@ export const createSubscription = async (req, res) => {
         throw new Error('Failed to retrieve or create payment intent');
       }
       
+      // Get interval from subscription (monthly or yearly)
+      const interval = subscription.items.data[0]?.plan?.interval || 'month';
+      const validityDays = interval === 'year' ? 365 : 30;
+      
       // Save subscription details to user
       user.subscription = {
         id: subscription.id,
         status: subscription.status,
         currentPeriodEnd: subscription.current_period_end,
         paymentDate: new Date(), // Save payment date even for incomplete subscriptions
-        validityDays: 30
+        validityDays: validityDays,
+        interval: interval
       };
       await user.save();
 

@@ -55,6 +55,11 @@ const userSchema = mongoose.Schema(
         type: Number,
         default: 30,
       },
+      interval: {
+        type: String,
+        enum: ['month', 'year'],
+        default: 'month',
+      },
     },
     notificationPreferences: {
       emailReminders: {

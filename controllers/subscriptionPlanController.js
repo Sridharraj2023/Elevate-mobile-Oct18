@@ -95,7 +95,9 @@ export const createSubscriptionPlan = async (req, res) => {
       customTrackRequests,
       description,
       features,
-      isDefault
+      isDefault,
+      stripeMonthlyPriceId,
+      stripeYearlyPriceId
     } = req.body;
 
     // Validate required fields
@@ -115,12 +117,13 @@ export const createSubscriptionPlan = async (req, res) => {
     }
 
     // Create Stripe product and prices if Stripe is available
-    let stripePriceId = '';
-    let stripeMonthlyPriceId = '';
-    let stripeYearlyPriceId = '';
+    let stripePriceId = stripeMonthlyPriceId || '';
+    let stripeMonthlyPriceIdFinal = stripeMonthlyPriceId || '';
+    let stripeYearlyPriceIdFinal = stripeYearlyPriceId || '';
     let stripeProductId = '';
 
-    if (stripe) {
+    // If price IDs are manually provided, use them; otherwise create new ones
+    if (stripe && (!stripeMonthlyPriceIdFinal || !stripeYearlyPriceIdFinal)) {
       try {
         // Create Stripe product
         const product = await stripe.products.create({
@@ -134,43 +137,47 @@ export const createSubscriptionPlan = async (req, res) => {
 
         stripeProductId = product.id;
 
-        // Create Stripe price for monthly subscription
-        const monthlyPrice = await stripe.prices.create({
-          product: stripeProductId,
-          unit_amount: Math.round(monthlyCost * 100), // Convert to cents
-          currency: 'usd',
-          recurring: {
-            interval: 'month'
-          },
-          metadata: {
-            plan_title: title,
-            billing_period: 'monthly'
-          }
-        });
+        // Create Stripe price for monthly subscription if not provided
+        if (!stripeMonthlyPriceIdFinal) {
+          const monthlyPrice = await stripe.prices.create({
+            product: stripeProductId,
+            unit_amount: Math.round(monthlyCost * 100), // Convert to cents
+            currency: 'usd',
+            recurring: {
+              interval: 'month'
+            },
+            metadata: {
+              plan_title: title,
+              billing_period: 'monthly'
+            }
+          });
 
-        stripeMonthlyPriceId = monthlyPrice.id;
-        stripePriceId = monthlyPrice.id; // Keep for backward compatibility
+          stripeMonthlyPriceIdFinal = monthlyPrice.id;
+          stripePriceId = monthlyPrice.id; // Keep for backward compatibility
+        }
 
-        // Create Stripe price for yearly subscription
-        const yearlyPrice = await stripe.prices.create({
-          product: stripeProductId,
-          unit_amount: Math.round(annualCost * 100), // Convert to cents
-          currency: 'usd',
-          recurring: {
-            interval: 'year'
-          },
-          metadata: {
-            plan_title: title,
-            billing_period: 'yearly'
-          }
-        });
+        // Create Stripe price for yearly subscription if not provided
+        if (!stripeYearlyPriceIdFinal) {
+          const yearlyPrice = await stripe.prices.create({
+            product: stripeProductId,
+            unit_amount: Math.round(annualCost * 100), // Convert to cents
+            currency: 'usd',
+            recurring: {
+              interval: 'year'
+            },
+            metadata: {
+              plan_title: title,
+              billing_period: 'yearly'
+            }
+          });
 
-        stripeYearlyPriceId = yearlyPrice.id;
+          stripeYearlyPriceIdFinal = yearlyPrice.id;
+        }
 
-        console.log('Created Stripe product and prices:', {
+        console.log('Created/Using Stripe product and prices:', {
           productId: stripeProductId,
-          monthlyPriceId: stripeMonthlyPriceId,
-          yearlyPriceId: stripeYearlyPriceId
+          monthlyPriceId: stripeMonthlyPriceIdFinal,
+          yearlyPriceId: stripeYearlyPriceIdFinal
         });
       } catch (stripeError) {
         console.error('Stripe error creating product/price:', stripeError);
@@ -181,9 +188,10 @@ export const createSubscriptionPlan = async (req, res) => {
         });
       }
     } else {
-      // Use environment variable as fallback
-      stripePriceId = process.env.STRIPE_PRICE_ID || '';
-      stripeMonthlyPriceId = process.env.STRIPE_PRICE_ID || '';
+      // Use manually provided price IDs or environment variable as fallback
+      stripePriceId = stripeMonthlyPriceIdFinal || process.env.STRIPE_PRICE_ID || '';
+      stripeMonthlyPriceIdFinal = stripeMonthlyPriceIdFinal || process.env.STRIPE_PRICE_ID || '';
+      stripeYearlyPriceIdFinal = stripeYearlyPriceIdFinal || '';
     }
 
     // Create subscription plan
@@ -199,8 +207,8 @@ export const createSubscriptionPlan = async (req, res) => {
       dynamicAudioFeatures,
       customTrackRequests,
       stripePriceId,
-      stripeMonthlyPriceId,
-      stripeYearlyPriceId,
+      stripeMonthlyPriceId: stripeMonthlyPriceIdFinal,
+      stripeYearlyPriceId: stripeYearlyPriceIdFinal,
       stripeProductId,
       description,
       features: features || [],
@@ -235,10 +243,18 @@ export const updateSubscriptionPlan = async (req, res) => {
     const { id } = req.params;
     const updateData = { ...req.body, lastModifiedBy: req.user._id };
 
-    // Remove fields that shouldn't be updated directly
+    // Remove fields that shouldn't be updated directly (except new price IDs)
     delete updateData.stripePriceId;
     delete updateData.stripeProductId;
     delete updateData.createdBy;
+    
+    // Allow updating price IDs if manually provided
+    if (updateData.stripeMonthlyPriceId === undefined) {
+      delete updateData.stripeMonthlyPriceId;
+    }
+    if (updateData.stripeYearlyPriceId === undefined) {
+      delete updateData.stripeYearlyPriceId;
+    }
 
     // Convert string numbers to actual numbers
     if (updateData.monthlyCost) {
