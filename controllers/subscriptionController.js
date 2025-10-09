@@ -520,9 +520,13 @@ export const fixSubscriptionStatus = async (req, res) => {
     })));
 
     // Find successful charge for this subscription
+    // Try multiple ways to match the charge to the subscription
     const successfulCharge = charges.data.find(charge => 
-      charge.status === 'succeeded' && 
-      charge.metadata?.subscription_id === subscription.id
+      charge.status === 'succeeded' && (
+        charge.metadata?.subscription_id === subscription.id ||
+        charge.subscription === subscription.id ||
+        charge.description?.includes(subscription.id)
+      )
     );
 
     if (successfulCharge) {
@@ -577,15 +581,24 @@ export const fixSubscriptionStatus = async (req, res) => {
       // Safely set currentPeriodEnd with validation
       if (currentSubscription.current_period_end) {
         user.subscription.currentPeriodEnd = new Date(currentSubscription.current_period_end * 1000);
+        console.log('Set currentPeriodEnd from Stripe:', user.subscription.currentPeriodEnd);
       } else {
         // Fallback: set based on interval
         const interval = currentSubscription.items.data[0]?.plan?.interval || 'month';
         const validityDays = interval === 'year' ? 365 : 30;
         user.subscription.currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+        console.log(`Set currentPeriodEnd fallback: ${validityDays} days from now (${interval} interval):`, user.subscription.currentPeriodEnd);
       }
       
       user.subscription.paymentDate = new Date();
       user.subscription.interval = currentSubscription.items.data[0]?.plan?.interval || 'month';
+      
+      console.log('Saving user subscription with:', {
+        status: user.subscription.status,
+        interval: user.subscription.interval,
+        currentPeriodEnd: user.subscription.currentPeriodEnd
+      });
+      
       await user.save();
 
       return res.json({
@@ -648,6 +661,50 @@ export const fixSubscriptionStatus = async (req, res) => {
           id: subscription.id,
           status: subscription.status,
           currentPeriodEnd: subscription.current_period_end,
+          isActive: true
+        }
+      });
+    }
+
+    // If no successful charge found, try to find recent payment intent
+    console.log('No successful charge found, checking recent payment intents...');
+    
+    const paymentIntents = await stripe.paymentIntents.list({
+      customer: user.stripeCustomerId,
+      limit: 5
+    });
+    
+    const recentSuccessfulPayment = paymentIntents.data.find(pi => 
+      pi.status === 'succeeded' && 
+      (pi.metadata?.subscription_id === subscription.id || pi.description?.includes(subscription.id))
+    );
+    
+    if (recentSuccessfulPayment) {
+      console.log('Found recent successful payment intent, fixing subscription...');
+      
+      // Force mark subscription as active with proper interval
+      user.subscription.status = 'active';
+      
+      // Get the subscription details to determine interval
+      const subscriptionDetails = await stripe.subscriptions.retrieve(subscription.id);
+      const interval = subscriptionDetails.items.data[0]?.plan?.interval || 'month';
+      const validityDays = interval === 'year' ? 365 : 30;
+      
+      user.subscription.currentPeriodEnd = new Date(Date.now() + (validityDays * 24 * 60 * 60 * 1000));
+      user.subscription.paymentDate = new Date();
+      user.subscription.interval = interval;
+      
+      console.log(`Fixed subscription with ${interval} interval, ${validityDays} days validity`);
+      
+      await user.save();
+      
+      return res.json({
+        message: 'Subscription fixed - payment was successful',
+        subscription: {
+          id: subscription.id,
+          status: 'active',
+          interval: interval,
+          validityDays: validityDays,
           isActive: true
         }
       });
