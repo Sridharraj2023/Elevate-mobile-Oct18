@@ -11,9 +11,17 @@ class EmailService {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      connectionTimeout: 60000, // 60 seconds
+      greetingTimeout: 30000,   // 30 seconds
+      socketTimeout: 60000,     // 60 seconds
       tls: {
-        rejectUnauthorized: false
-      }
+        rejectUnauthorized: false,
+        ciphers: 'SSLv3'
+      },
+      pool: true,
+      maxConnections: 1,
+      rateDelta: 20000,
+      rateLimit: 5
     });
   }
 
@@ -412,11 +420,20 @@ The Elevate Team
         from: process.env.EMAIL_FROM || 'Using default'
       });
       
+      // Verify connection first
+      await this.transporter.verify();
+      console.log('SMTP connection verified successfully');
+      
       const result = await this.transporter.sendMail(mailOptions);
       console.log('Password reset email sent successfully:', result.messageId);
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error('Error sending password reset email:', error);
+      console.error('Error details:', {
+        code: error.code,
+        command: error.command,
+        response: error.response
+      });
       return { success: false, error: error.message };
     }
   }
