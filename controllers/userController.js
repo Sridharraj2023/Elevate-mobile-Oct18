@@ -1,6 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import User from '../models/userModel.js';
 import generateToken from '../utils/generateToken.js';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
@@ -351,7 +352,6 @@ const resetPassword = asyncHandler(async (req, res) => {
   }
 
   // Hash the token to compare with database
-  const crypto = require('crypto');
   const hashedToken = crypto
     .createHash('sha256')
     .update(token)

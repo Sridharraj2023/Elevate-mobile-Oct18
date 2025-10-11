@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 const userSchema = mongoose.Schema(
   {
@@ -115,7 +116,6 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 
 // Method to generate password reset token
 userSchema.methods.createPasswordResetToken = function() {
-  const crypto = require('crypto');
   const resetToken = crypto.randomBytes(32).toString('hex');
   
   // Hash token and save to database
