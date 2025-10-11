@@ -2,27 +2,71 @@ import nodemailer from 'nodemailer';
 
 class EmailService {
   constructor() {
-    this.transporter = nodemailer.createTransport({
+    // Primary Gmail configuration with enhanced settings
+    this.gmailTransporter = nodemailer.createTransport({
       service: 'gmail',
       host: 'smtp.gmail.com',
       port: 587,
-      secure: false, // true for 465, false for other ports
+      secure: false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 60000, // 60 seconds
-      greetingTimeout: 30000,   // 30 seconds
-      socketTimeout: 60000,     // 60 seconds
+      connectionTimeout: 30000, // Reduced to 30 seconds
+      greetingTimeout: 15000,   // Reduced to 15 seconds
+      socketTimeout: 30000,     // Reduced to 30 seconds
       tls: {
         rejectUnauthorized: false,
         ciphers: 'SSLv3'
       },
-      pool: true,
+      pool: false, // Disable pooling for better reliability
       maxConnections: 1,
       rateDelta: 20000,
       rateLimit: 5
     });
+
+    // Backup SMTP configuration (SendGrid)
+    this.sendgridTransporter = nodemailer.createTransport({
+      host: 'smtp.sendgrid.net',
+      port: 587,
+      secure: false,
+      auth: {
+        user: 'apikey',
+        pass: process.env.SENDGRID_API_KEY
+      },
+      connectionTimeout: 20000,
+      greetingTimeout: 10000,
+      socketTimeout: 20000
+    });
+
+    // Test connection on startup
+    this.verifyConnections();
+  }
+
+  async verifyConnections() {
+    try {
+      console.log('Verifying email service connections...');
+      
+      // Test Gmail connection
+      try {
+        await this.gmailTransporter.verify();
+        console.log('✅ Gmail SMTP connection verified successfully');
+      } catch (error) {
+        console.log('❌ Gmail SMTP connection failed:', error.message);
+      }
+
+      // Test SendGrid connection if API key is available
+      if (process.env.SENDGRID_API_KEY) {
+        try {
+          await this.sendgridTransporter.verify();
+          console.log('✅ SendGrid SMTP connection verified successfully');
+        } catch (error) {
+          console.log('❌ SendGrid SMTP connection failed:', error.message);
+        }
+      }
+    } catch (error) {
+      console.log('Email service verification error:', error.message);
+    }
   }
 
   async sendReminderEmail(user, reminderType, remainingDays) {
@@ -36,13 +80,31 @@ class EmailService {
       text: template.text,
     };
 
+    // Try Gmail first
     try {
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('Email sent successfully:', result.messageId);
-      return { success: true, messageId: result.messageId };
-    } catch (error) {
-      console.error('Error sending email:', error);
-      return { success: false, error: error.message };
+      const result = await this.gmailTransporter.sendMail(mailOptions);
+      console.log('✅ Email sent successfully via Gmail:', result.messageId);
+      return { success: true, messageId: result.messageId, provider: 'gmail' };
+    } catch (gmailError) {
+      console.log('❌ Gmail SMTP failed:', gmailError.message);
+      
+      // Try SendGrid as fallback
+      if (process.env.SENDGRID_API_KEY) {
+        try {
+          const result = await this.sendgridTransporter.sendMail(mailOptions);
+          console.log('✅ Email sent successfully via SendGrid:', result.messageId);
+          return { success: true, messageId: result.messageId, provider: 'sendgrid' };
+        } catch (sendgridError) {
+          console.log('❌ SendGrid SMTP failed:', sendgridError.message);
+        }
+      }
+
+      // If both fail, return error
+      console.log('❌ All email providers failed');
+      return { 
+        success: false, 
+        error: `Gmail: ${gmailError.message}${process.env.SENDGRID_API_KEY ? `, SendGrid: ${sendgridError.message}` : ''}` 
+      };
     }
   }
 
@@ -412,29 +474,51 @@ The Elevate Team
       text: this.getPasswordResetText(user.name, resetLink),
     };
 
+    console.log('Attempting to send password reset email to:', user.email);
+    console.log('Email config check:', {
+      user: process.env.EMAIL_USER ? 'Set' : 'Not set',
+      pass: process.env.EMAIL_PASS ? 'Set' : 'Not set',
+      from: process.env.EMAIL_FROM || 'Using default',
+      sendgrid: process.env.SENDGRID_API_KEY ? 'Available' : 'Not available'
+    });
+
+    // Try Gmail first
     try {
-      console.log('Attempting to send password reset email to:', user.email);
-      console.log('Email config check:', {
-        user: process.env.EMAIL_USER ? 'Set' : 'Not set',
-        pass: process.env.EMAIL_PASS ? 'Set' : 'Not set',
-        from: process.env.EMAIL_FROM || 'Using default'
+      console.log('Trying Gmail SMTP...');
+      const result = await this.gmailTransporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent successfully via Gmail:', result.messageId);
+      return { success: true, messageId: result.messageId, provider: 'gmail' };
+    } catch (gmailError) {
+      console.log('❌ Gmail SMTP failed:', gmailError.message);
+      console.log('Gmail error details:', {
+        code: gmailError.code,
+        command: gmailError.command,
+        response: gmailError.response
       });
       
-      // Verify connection first
-      await this.transporter.verify();
-      console.log('SMTP connection verified successfully');
-      
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('Password reset email sent successfully:', result.messageId);
-      return { success: true, messageId: result.messageId };
-    } catch (error) {
-      console.error('Error sending password reset email:', error);
-      console.error('Error details:', {
-        code: error.code,
-        command: error.command,
-        response: error.response
-      });
-      return { success: false, error: error.message };
+      // Try SendGrid as fallback
+      if (process.env.SENDGRID_API_KEY) {
+        try {
+          console.log('Trying SendGrid SMTP...');
+          const result = await this.sendgridTransporter.sendMail(mailOptions);
+          console.log('✅ Password reset email sent successfully via SendGrid:', result.messageId);
+          return { success: true, messageId: result.messageId, provider: 'sendgrid' };
+        } catch (sendgridError) {
+          console.log('❌ SendGrid SMTP failed:', sendgridError.message);
+          console.log('SendGrid error details:', {
+            code: sendgridError.code,
+            command: sendgridError.command,
+            response: sendgridError.response
+          });
+        }
+      }
+
+      // If both fail, return error
+      console.log('❌ All email providers failed');
+      return { 
+        success: false, 
+        error: `Gmail: ${gmailError.message}${process.env.SENDGRID_API_KEY ? `, SendGrid: ${sendgridError.message}` : ''}` 
+      };
     }
   }
 
@@ -447,13 +531,31 @@ The Elevate Team
       text: this.getPasswordResetConfirmationText(user.name),
     };
 
+    // Try Gmail first
     try {
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('Password reset confirmation email sent successfully:', result.messageId);
-      return { success: true, messageId: result.messageId };
-    } catch (error) {
-      console.error('Error sending password reset confirmation email:', error);
-      return { success: false, error: error.message };
+      const result = await this.gmailTransporter.sendMail(mailOptions);
+      console.log('✅ Password reset confirmation email sent successfully via Gmail:', result.messageId);
+      return { success: true, messageId: result.messageId, provider: 'gmail' };
+    } catch (gmailError) {
+      console.log('❌ Gmail SMTP failed:', gmailError.message);
+      
+      // Try SendGrid as fallback
+      if (process.env.SENDGRID_API_KEY) {
+        try {
+          const result = await this.sendgridTransporter.sendMail(mailOptions);
+          console.log('✅ Password reset confirmation email sent successfully via SendGrid:', result.messageId);
+          return { success: true, messageId: result.messageId, provider: 'sendgrid' };
+        } catch (sendgridError) {
+          console.log('❌ SendGrid SMTP failed:', sendgridError.message);
+        }
+      }
+
+      // If both fail, return error
+      console.log('❌ All email providers failed');
+      return { 
+        success: false, 
+        error: `Gmail: ${gmailError.message}${process.env.SENDGRID_API_KEY ? `, SendGrid: ${sendgridError.message}` : ''}` 
+      };
     }
   }
 
