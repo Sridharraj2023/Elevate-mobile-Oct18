@@ -44,17 +44,21 @@ const getTermsById = asyncHandler(async (req, res) => {
 // @route   POST /api/terms/admin
 // @access  Private/Admin
 const createTerms = asyncHandler(async (req, res) => {
-  const { title, content, version, effectiveDate } = req.body;
+  const { documentType, title, content, version, effectiveDate } = req.body;
   
-  // Check if version already exists
-  const versionExists = await TermsAndConditions.findOne({ version });
+  // Check if version already exists for this document type
+  const versionExists = await TermsAndConditions.findOne({ 
+    documentType: documentType || 'terms', 
+    version 
+  });
   if (versionExists) {
     res.status(400);
-    throw new Error('Version already exists');
+    throw new Error('Version already exists for this document type');
   }
   
   const terms = await TermsAndConditions.create({
-    title,
+    documentType: documentType || 'terms',
+    title: title || (documentType === 'disclaimer' ? 'Disclaimer' : 'Terms and Conditions'),
     content,
     version,
     publishedBy: req.user._id,

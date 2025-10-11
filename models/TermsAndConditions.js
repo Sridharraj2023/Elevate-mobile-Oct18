@@ -2,6 +2,12 @@ import mongoose from 'mongoose';
 
 const termsAndConditionsSchema = mongoose.Schema(
   {
+    documentType: {
+      type: String,
+      required: true,
+      enum: ['terms', 'disclaimer'],
+      default: 'terms'
+    },
     title: {
       type: String,
       required: true,
@@ -13,8 +19,7 @@ const termsAndConditionsSchema = mongoose.Schema(
     },
     version: {
       type: String,
-      required: true,
-      unique: true
+      required: true
     },
     isActive: {
       type: Boolean,
