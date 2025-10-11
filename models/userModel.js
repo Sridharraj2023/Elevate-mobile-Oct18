@@ -92,6 +92,15 @@ const userSchema = mongoose.Schema(
         default: null,
       },
     },
+    // Password Reset Fields
+    resetPasswordToken: {
+      type: String,
+      default: null,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -104,6 +113,28 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
+// Method to generate password reset token
+userSchema.methods.createPasswordResetToken = function() {
+  const crypto = require('crypto');
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  // Hash token and save to database
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  
+  // Set token expiration (1 hour)
+  this.resetPasswordExpires = Date.now() + 60 * 60 * 1000;
+  
+  return resetToken;
+};
+
+// Method to clear password reset fields
+userSchema.methods.clearPasswordResetToken = function() {
+  this.resetPasswordToken = null;
+  this.resetPasswordExpires = null;
+};
 
 // Encrypt password using bcrypt before saving
 userSchema.pre('save', async function (next) {

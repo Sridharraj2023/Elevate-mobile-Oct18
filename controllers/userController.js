@@ -208,8 +208,56 @@ const updateUserProfile = asyncHandler(async (req, res) => {
 // @route   GET /api/users/all
 // @access  Private/Admin
 const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({}).select('-password');
-  res.json(users);
+  const users = await User.find({})
+    .select('-password -resetPasswordToken -resetPasswordExpires')
+    .sort({ createdAt: -1 }); // Newest first
+  
+  // Calculate subscription status for each user
+  const usersWithStatus = users.map(user => {
+    const userObj = user.toObject();
+    
+    // Determine subscription status
+    let subscriptionStatus = 'No Subscription';
+    let isActive = false;
+    let daysRemaining = 0;
+    let expiryDate = null;
+    
+    if (userObj.subscription && userObj.subscription.paymentDate) {
+      const paymentDate = new Date(userObj.subscription.paymentDate);
+      const validityDays = userObj.subscription.validityDays || 30;
+      expiryDate = new Date(paymentDate);
+      expiryDate.setDate(expiryDate.getDate() + validityDays);
+      
+      const now = new Date();
+      daysRemaining = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+      
+      if (daysRemaining > 0) {
+        subscriptionStatus = 'Active';
+        isActive = true;
+      } else if (daysRemaining <= 0 && daysRemaining >= -30) {
+        subscriptionStatus = 'Expired';
+        isActive = false;
+      } else {
+        subscriptionStatus = 'Inactive';
+        isActive = false;
+      }
+      
+      // Check if canceled
+      if (userObj.subscription.cancelAtPeriodEnd) {
+        subscriptionStatus = 'Canceled';
+      }
+    }
+    
+    return {
+      ...userObj,
+      subscriptionStatus,
+      isActive,
+      daysRemaining: daysRemaining > 0 ? daysRemaining : 0,
+      expiryDate: expiryDate
+    };
+  });
+  
+  res.json(usersWithStatus);
 });
 
 // @desc    Get specific user by ID (Admin only)
@@ -225,59 +273,124 @@ const getUserById = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Forgot password
+// @desc    Forgot password - Request password reset
 // @route   POST /api/users/forgot-password
 // @access  Public
 const forgotUserPassword = asyncHandler(async (req, res) => {
   const { email } = req.body;
-  const user = await User.findOne({ email });
 
-  if (!user) {
-    res.status(404);
-    throw new Error("User not found");
+  // Validate email
+  if (!email) {
+    res.status(400);
+    throw new Error('Please provide an email address');
   }
 
-  const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-  const resetUrl = `http://localhost:3000/reset-password/${resetToken}`;
+  // Find user by email (case-insensitive)
+  const user = await User.findOne({ email: email.toLowerCase() });
 
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  // Always return success message for security (don't reveal if email exists)
+  if (!user) {
+    res.json({ 
+      message: 'If an account with that email exists, a password reset link has been sent.' 
+    });
+    return;
+  }
 
-  const mailOptions = {
-    from: "support@gmail.com",
-    to: user.email,
-    subject: 'Password Reset Request',
-    text: `Click here to reset your password: ${resetUrl}`,
-  };
+  // Generate reset token using the model method
+  const resetToken = user.createPasswordResetToken();
+  
+  // Save user with reset token and expiration
+  await user.save({ validateBeforeSave: false });
 
-  await transporter.sendMail(mailOptions);
-  res.json({ message: 'Password reset email sent successfully.' });
+  try {
+    // Import email service
+    const emailService = (await import('../services/emailService.js')).default;
+    
+    // Send password reset email
+    const result = await emailService.sendPasswordResetEmail(user, resetToken);
+
+    if (!result.success) {
+      // If email fails, clear the reset token
+      user.clearPasswordResetToken();
+      await user.save({ validateBeforeSave: false });
+      
+      res.status(500);
+      throw new Error('Error sending email. Please try again later.');
+    }
+
+    res.json({ 
+      message: 'If an account with that email exists, a password reset link has been sent.' 
+    });
+  } catch (error) {
+    // Clear reset token if any error occurs
+    user.clearPasswordResetToken();
+    await user.save({ validateBeforeSave: false });
+    
+    console.error('Forgot password error:', error);
+    res.status(500);
+    throw new Error('Error sending password reset email. Please try again later.');
+  }
 });
 
-// @desc    Reset password
+// @desc    Reset password with token
 // @route   POST /api/users/reset-password/:token
 // @access  Public
 const resetPassword = asyncHandler(async (req, res) => {
   const { token } = req.params;
   const { password } = req.body;
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const user = await User.findById(decoded.id);
+  // Validate password
+  if (!password) {
+    res.status(400);
+    throw new Error('Please provide a new password');
+  }
+
+  if (password.length < 6) {
+    res.status(400);
+    throw new Error('Password must be at least 6 characters long');
+  }
+
+  // Hash the token to compare with database
+  const crypto = require('crypto');
+  const hashedToken = crypto
+    .createHash('sha256')
+    .update(token)
+    .digest('hex');
+
+  // Find user with valid reset token and not expired
+  const user = await User.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpires: { $gt: Date.now() }
+  });
 
   if (!user) {
     res.status(400);
-    throw new Error('Invalid token or user does not exist');
+    throw new Error('Invalid or expired password reset token');
   }
 
-  user.password = password; // Password will be hashed by pre-save hook
+  // Update password (will be hashed by pre-save hook)
+  user.password = password;
+  
+  // Clear reset token fields
+  user.clearPasswordResetToken();
+  
+  // Save user
   await user.save();
 
-  res.json({ message: 'Password reset successful' });
+  try {
+    // Import email service
+    const emailService = (await import('../services/emailService.js')).default;
+    
+    // Send confirmation email
+    await emailService.sendPasswordResetConfirmationEmail(user);
+  } catch (error) {
+    console.error('Error sending confirmation email:', error);
+    // Don't fail the password reset if email fails
+  }
+
+  res.json({ 
+    message: 'Password reset successful. You can now log in with your new password.' 
+  });
 });
 const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);

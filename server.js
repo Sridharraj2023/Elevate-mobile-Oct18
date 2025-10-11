@@ -56,6 +56,7 @@ import musicRoutes from './routes/musicRoutes.js';
 import cors from 'cors';
 import { handleWebhook } from './controllers/subscriptionController.js';
 import userRoutes from './routes/userRoutes.js';
+import termsRoutes from './routes/termsRoutes.js';
 
 const port = process.env.PORT || 5000;
 
@@ -139,6 +140,7 @@ app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/subscription-plans', subscriptionPlanRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/terms', termsRoutes);
 
 if (process.env.NODE_ENV === 'production') {
   const __dirname = path.resolve();

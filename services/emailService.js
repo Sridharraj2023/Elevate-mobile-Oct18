@@ -383,6 +383,200 @@ Best regards,
 The Elevate Team
     `;
   }
+
+  // ============ PASSWORD RESET EMAIL METHODS ============
+
+  async sendPasswordResetEmail(user, resetToken) {
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'noreply@elevate.com',
+      to: user.email,
+      subject: 'Password Reset Request - Elevate',
+      html: this.getPasswordResetHTML(user.name, resetLink),
+      text: this.getPasswordResetText(user.name, resetLink),
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('Password reset email sent successfully:', result.messageId);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('Error sending password reset email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async sendPasswordResetConfirmationEmail(user) {
+    const mailOptions = {
+      from: process.env.EMAIL_FROM || 'noreply@elevate.com',
+      to: user.email,
+      subject: 'Password Reset Successful - Elevate',
+      html: this.getPasswordResetConfirmationHTML(user.name),
+      text: this.getPasswordResetConfirmationText(user.name),
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('Password reset confirmation email sent successfully:', result.messageId);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('Error sending password reset confirmation email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  getPasswordResetHTML(name, resetLink) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Password Reset Request</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #6F41F3; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .warning { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
+          .button { background-color: #6F41F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: bold; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .security-note { background-color: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196F3; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🔐 Elevate Music</h1>
+            <h2>Password Reset Request</h2>
+          </div>
+          <div class="content">
+            <h3>Hi ${name},</h3>
+            <p>We received a request to reset your password for your Elevate account. If you made this request, click the button below to reset your password:</p>
+            
+            <div style="text-align: center;">
+              <a href="${resetLink}" class="button">🔄 Reset Password</a>
+            </div>
+            
+            <div class="warning">
+              <h4>⚠️ Important:</h4>
+              <p><strong>This link will expire in 1 hour</strong> for security reasons.</p>
+            </div>
+            
+            <p>If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #6F41F3;">${resetLink}</p>
+            
+            <div class="security-note">
+              <h4>🛡️ Security Notice:</h4>
+              <p><strong>If you didn't request this password reset, please ignore this email.</strong> Your password will remain unchanged and your account is secure.</p>
+              <p>If you're concerned about your account security, please contact our support team immediately.</p>
+            </div>
+            
+            <div class="footer">
+              <p>Best regards,<br>The Elevate Team</p>
+              <p>This is an automated message. Please do not reply to this email.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getPasswordResetText(name, resetLink) {
+    return `
+Hi ${name},
+
+We received a request to reset your password for your Elevate account.
+
+Click the link below to reset your password:
+${resetLink}
+
+⚠️ IMPORTANT: This link will expire in 1 hour for security reasons.
+
+🛡️ SECURITY NOTICE:
+If you didn't request this password reset, please ignore this email. Your password will remain unchanged and your account is secure.
+
+If you're concerned about your account security, please contact our support team immediately.
+
+Best regards,
+The Elevate Team
+
+This is an automated message. Please do not reply to this email.
+    `;
+  }
+
+  getPasswordResetConfirmationHTML(name) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Password Reset Successful</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background-color: #28a745; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+          .success { background-color: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745; }
+          .button { background-color: #6F41F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
+          .security-note { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Elevate Music</h1>
+            <h2>Password Reset Successful</h2>
+          </div>
+          <div class="content">
+            <h3>Hi ${name},</h3>
+            
+            <div class="success">
+              <h4>✅ Success!</h4>
+              <p>Your password has been successfully reset. You can now log in to your Elevate account with your new password.</p>
+            </div>
+            
+            <div style="text-align: center;">
+              <a href="${process.env.FRONTEND_URL}/login" class="button">🔐 Login to Your Account</a>
+            </div>
+            
+            <div class="security-note">
+              <h4>🛡️ Security Reminder:</h4>
+              <p><strong>If you didn't make this change,</strong> please contact our support team immediately. Your account security is our top priority.</p>
+            </div>
+            
+            <p>Thank you for using Elevate!</p>
+            
+            <div class="footer">
+              <p>Best regards,<br>The Elevate Team</p>
+              <p>This is an automated message. Please do not reply to this email.</p>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getPasswordResetConfirmationText(name) {
+    return `
+Hi ${name},
+
+✅ SUCCESS! Your password has been successfully reset.
+
+You can now log in to your Elevate account with your new password.
+
+🛡️ SECURITY REMINDER:
+If you didn't make this change, please contact our support team immediately. Your account security is our top priority.
+
+Thank you for using Elevate!
+
+Best regards,
+The Elevate Team
+
+This is an automated message. Please do not reply to this email.
+    `;
+  }
 }
 
 export default new EmailService();
