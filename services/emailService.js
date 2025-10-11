@@ -3,11 +3,17 @@ import nodemailer from 'nodemailer';
 class EmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail', // or your preferred email service
+      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      tls: {
+        rejectUnauthorized: false
+      }
     });
   }
 
@@ -387,7 +393,8 @@ The Elevate Team
   // ============ PASSWORD RESET EMAIL METHODS ============
 
   async sendPasswordResetEmail(user, resetToken) {
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // For Flutter app, you might want to use a web URL or deep link
+    const resetLink = `https://your-flutter-app.com/reset-password/${resetToken}`;
     
     const mailOptions = {
       from: process.env.EMAIL_FROM || 'noreply@elevate.com',
@@ -398,6 +405,13 @@ The Elevate Team
     };
 
     try {
+      console.log('Attempting to send password reset email to:', user.email);
+      console.log('Email config check:', {
+        user: process.env.EMAIL_USER ? 'Set' : 'Not set',
+        pass: process.env.EMAIL_PASS ? 'Set' : 'Not set',
+        from: process.env.EMAIL_FROM || 'Using default'
+      });
+      
       const result = await this.transporter.sendMail(mailOptions);
       console.log('Password reset email sent successfully:', result.messageId);
       return { success: true, messageId: result.messageId };

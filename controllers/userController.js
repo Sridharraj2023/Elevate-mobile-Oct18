@@ -304,13 +304,14 @@ const forgotUserPassword = asyncHandler(async (req, res) => {
   await user.save({ validateBeforeSave: false });
 
   try {
-    // For now, skip email sending and just return success
-    // TODO: Configure email service properly
+    // Import email service
+    const emailService = (await import('../services/emailService.js')).default;
+    
+    // Send password reset email
+    const result = await emailService.sendPasswordResetEmail(user, resetToken);
     
     // Log the reset token for testing (remove in production)
     console.log('Password reset token for', email, ':', resetToken);
-    
-    const result = { success: true };
 
     if (!result.success) {
       // If email fails, clear the reset token
