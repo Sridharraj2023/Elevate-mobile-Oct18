@@ -136,9 +136,12 @@ const publishTerms = asyncHandler(async (req, res) => {
     throw new Error('Terms version not found');
   }
   
-  // Deactivate all other versions
+  // Deactivate all other versions of the SAME documentType only
   await TermsAndConditions.updateMany(
-    { isActive: true },
+    { 
+      isActive: true, 
+      documentType: terms.documentType 
+    },
     { isActive: false }
   );
   
