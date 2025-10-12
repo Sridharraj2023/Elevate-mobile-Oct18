@@ -28,6 +28,7 @@
         "node-cron": "^3.0.3",
         "node-fetch": "^3.3.2",
         "nodemailer": "^6.10.0",
+        "resend": "^6.1.2",
         "stripe": "^18.5.0",
         "uuid": "^11.1.0"
     },

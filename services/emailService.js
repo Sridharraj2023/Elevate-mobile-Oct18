@@ -1,110 +1,49 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 class EmailService {
   constructor() {
-    // Primary Gmail configuration with enhanced settings
-    this.gmailTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      host: 'smtp.gmail.com',
-      port: 587,
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      connectionTimeout: 30000, // Reduced to 30 seconds
-      greetingTimeout: 15000,   // Reduced to 15 seconds
-      socketTimeout: 30000,     // Reduced to 30 seconds
-      tls: {
-        rejectUnauthorized: false,
-        ciphers: 'SSLv3'
-      },
-      pool: false, // Disable pooling for better reliability
-      maxConnections: 1,
-      rateDelta: 20000,
-      rateLimit: 5
-    });
-
-    // Backup SMTP configuration (SendGrid)
-    this.sendgridTransporter = nodemailer.createTransport({
-      host: 'smtp.sendgrid.net',
-      port: 587,
-      secure: false,
-      auth: {
-        user: 'apikey',
-        pass: process.env.SENDGRID_API_KEY
-      },
-      connectionTimeout: 20000,
-      greetingTimeout: 10000,
-      socketTimeout: 20000
-    });
-
-    // Test connection on startup
-    this.verifyConnections();
+    // Initialize Resend with API key from environment
+    this.resend = new Resend(process.env.RESEND_API_KEY);
+    
+    // Verify configuration on startup
+    this.verifyConfiguration();
   }
 
-  async verifyConnections() {
-    try {
-      console.log('Verifying email service connections...');
-      
-      // Test Gmail connection
-      try {
-        await this.gmailTransporter.verify();
-        console.log('✅ Gmail SMTP connection verified successfully');
-      } catch (error) {
-        console.log('❌ Gmail SMTP connection failed:', error.message);
-      }
-
-      // Test SendGrid connection if API key is available
-      if (process.env.SENDGRID_API_KEY) {
-        try {
-          await this.sendgridTransporter.verify();
-          console.log('✅ SendGrid SMTP connection verified successfully');
-        } catch (error) {
-          console.log('❌ SendGrid SMTP connection failed:', error.message);
-        }
-      }
-    } catch (error) {
-      console.log('Email service verification error:', error.message);
+  verifyConfiguration() {
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('⚠️  WARNING: RESEND_API_KEY is not set in .env file');
+      console.warn('   Emails will not be sent until this is configured');
+    } else {
+      console.log('✅ Resend email service initialized');
+      console.log('📧 Email from:', process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>');
     }
   }
+
+  // ============ SUBSCRIPTION REMINDER EMAILS ============
 
   async sendReminderEmail(user, reminderType, remainingDays) {
     const template = this.getEmailTemplate(reminderType, user, remainingDays);
     
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@elevate.com',
-      to: user.email,
-      subject: template.subject,
-      html: template.html,
-      text: template.text,
-    };
-
-    // Try Gmail first
     try {
-      const result = await this.gmailTransporter.sendMail(mailOptions);
-      console.log('✅ Email sent successfully via Gmail:', result.messageId);
-      return { success: true, messageId: result.messageId, provider: 'gmail' };
-    } catch (gmailError) {
-      console.log('❌ Gmail SMTP failed:', gmailError.message);
-      
-      // Try SendGrid as fallback
-      if (process.env.SENDGRID_API_KEY) {
-        try {
-          const result = await this.sendgridTransporter.sendMail(mailOptions);
-          console.log('✅ Email sent successfully via SendGrid:', result.messageId);
-          return { success: true, messageId: result.messageId, provider: 'sendgrid' };
-        } catch (sendgridError) {
-          console.log('❌ SendGrid SMTP failed:', sendgridError.message);
-        }
+      const { data, error } = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>',
+        to: [user.email],
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+
+      if (error) {
+        console.error('❌ Resend error:', error);
+        return { success: false, error: error.message };
       }
 
-      // If both fail, return error
-      console.log('❌ All email providers failed');
-      return { 
-        success: false, 
-        error: `Gmail: ${gmailError.message}${process.env.SENDGRID_API_KEY ? `, SendGrid: ${sendgridError.message}` : ''}` 
-      };
+      console.log('✅ Reminder email sent successfully via Resend');
+      console.log('📬 Email ID:', data.id);
+      return { success: true, messageId: data.id, provider: 'resend' };
+    } catch (error) {
+      console.error('❌ Error sending reminder email:', error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -144,6 +83,299 @@ class EmailService {
     expiry.setDate(expiry.getDate() + 30);
     return expiry.toLocaleDateString();
   }
+
+  // ============ PASSWORD RESET EMAIL METHODS ============
+
+  async sendPasswordResetEmail(user, resetToken) {
+    // Construct reset link for Flutter app
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    
+    console.log('📧 Sending password reset email to:', user.email);
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>',
+        to: [user.email],
+        subject: 'Reset Your Password - Elevate',
+        html: this.getPasswordResetHTML(user.name, resetLink),
+        text: this.getPasswordResetText(user.name, resetLink),
+      });
+
+      if (error) {
+        console.error('❌ Resend API error:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('✅ Password reset email sent successfully via Resend');
+      console.log('📬 Email ID:', data.id);
+      return { success: true, messageId: data.id, provider: 'resend' };
+    } catch (error) {
+      console.error('❌ Error sending password reset email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async sendPasswordResetConfirmationEmail(user) {
+    const loginLink = `${process.env.FRONTEND_URL}/login`;
+    
+    console.log('📧 Sending password reset confirmation to:', user.email);
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>',
+        to: [user.email],
+        subject: 'Password Reset Successful - Elevate',
+        html: this.getPasswordResetConfirmationHTML(user.name, loginLink),
+        text: this.getPasswordResetConfirmationText(user.name, loginLink),
+      });
+
+      if (error) {
+        console.error('❌ Resend API error:', error);
+        return { success: false, error: error.message };
+      }
+
+      console.log('✅ Password reset confirmation sent successfully via Resend');
+      console.log('📬 Email ID:', data.id);
+      return { success: true, messageId: data.id, provider: 'resend' };
+    } catch (error) {
+      console.error('❌ Error sending confirmation email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ============ EMAIL TEMPLATES (HTML) ============
+
+  getPasswordResetHTML(name, resetLink) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f7;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td align="center" style="padding: 40px 20px;">
+              <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px;">
+                
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 50px 40px; text-align: center; border-radius: 12px 12px 0 0;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 1px;">ELEVATE</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">by Frequency Tuning</p>
+                  </td>
+                </tr>
+                
+                <!-- Content -->
+                <tr>
+                  <td style="padding: 50px 40px;">
+                    <h2 style="color: #1a1a1a; margin: 0 0 24px 0; font-size: 26px; font-weight: 600;">Reset Your Password</h2>
+                    
+                    <p style="color: #4a4a4a; font-size: 16px; line-height: 1.7; margin: 0 0 24px 0;">
+                      Hi ${name},
+                    </p>
+                    
+                    <p style="color: #4a4a4a; font-size: 16px; line-height: 1.7; margin: 0 0 24px 0;">
+                      We received a request to reset the password for your Elevate account. Click the button below to create a new password:
+                    </p>
+                    
+                    <!-- Reset Button -->
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin: 32px 0;">
+                      <tr>
+                        <td style="border-radius: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
+                          <a href="${resetLink}" target="_blank" style="display: inline-block; padding: 18px 48px; font-size: 17px; color: #ffffff; text-decoration: none; font-weight: 600; letter-spacing: 0.5px;">
+                            Reset My Password
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <p style="color: #6b6b6b; font-size: 14px; line-height: 1.6; margin: 24px 0 8px 0;">
+                      Or copy and paste this link into your browser:
+                    </p>
+                    <div style="background-color: #f8f9fa; padding: 14px; border-radius: 6px; border: 1px solid #e9ecef; word-break: break-all;">
+                      <a href="${resetLink}" style="color: #667eea; font-size: 13px; text-decoration: none;">${resetLink}</a>
+                    </div>
+                    
+                    <!-- Warning -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 32px 0; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <p style="color: #856404; font-size: 14px; margin: 0; line-height: 1.6;">
+                            <strong>⚠️ Important Security Notice</strong><br>
+                            This password reset link will expire in <strong>1 hour</strong> for your security.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <p style="color: #6b6b6b; font-size: 14px; line-height: 1.6; margin: 24px 0 0 0;">
+                      If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8f9fa; padding: 32px 40px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e9ecef;">
+                    <p style="color: #9ca3af; font-size: 13px; margin: 0; line-height: 1.6;">
+                      © ${new Date().getFullYear()} Elevate by Frequency Tuning. All rights reserved.
+                    </p>
+                    <p style="color: #9ca3af; font-size: 12px; margin: 12px 0 0 0;">
+                      This is an automated security email. Please do not reply to this message.
+                    </p>
+                  </td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+  }
+
+  getPasswordResetConfirmationHTML(name, loginLink) {
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Reset Successful</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f7;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td align="center" style="padding: 40px 20px;">
+              <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px;">
+                
+                <!-- Header -->
+                <tr>
+                  <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 50px 40px; text-align: center; border-radius: 12px 12px 0 0;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 1px;">ELEVATE</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px; font-weight: 500;">by Frequency Tuning</p>
+                  </td>
+                </tr>
+                
+                <!-- Success Icon -->
+                <tr>
+                  <td align="center" style="padding: 50px 40px 30px 40px;">
+                    <div style="width: 90px; height: 90px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                      <svg width="50" height="50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M20 6L9 17L4 12" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </div>
+                    
+                    <h2 style="color: #1a1a1a; margin: 0 0 16px 0; font-size: 28px; font-weight: 600;">Password Reset Successful!</h2>
+                    
+                    <p style="color: #4a4a4a; font-size: 16px; line-height: 1.7; margin: 0;">
+                      Hi ${name},
+                    </p>
+                    
+                    <p style="color: #4a4a4a; font-size: 16px; line-height: 1.7; margin: 16px 0 0 0;">
+                      Your password has been successfully changed. You can now log in to your Elevate account with your new password.
+                    </p>
+                  </td>
+                </tr>
+                
+                <!-- Login Button -->
+                <tr>
+                  <td align="center" style="padding: 0 40px 40px 40px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="border-radius: 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);">
+                          <a href="${loginLink}" target="_blank" style="display: inline-block; padding: 18px 48px; font-size: 17px; color: #ffffff; text-decoration: none; font-weight: 600; letter-spacing: 0.5px;">
+                            Login to Your Account
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                    
+                    <!-- Security Notice -->
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 40px 0 0 0; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 6px;">
+                      <tr>
+                        <td style="padding: 16px 20px;">
+                          <p style="color: #1e40af; font-size: 14px; margin: 0; line-height: 1.6; text-align: left;">
+                            <strong>🔒 Security Tip</strong><br>
+                            If you didn't make this change or believe an unauthorized person has accessed your account, please contact our support team immediately.
+                          </p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #f8f9fa; padding: 32px 40px; text-align: center; border-radius: 0 0 12px 12px; border-top: 1px solid #e9ecef;">
+                    <p style="color: #9ca3af; font-size: 13px; margin: 0; line-height: 1.6;">
+                      © ${new Date().getFullYear()} Elevate by Frequency Tuning. All rights reserved.
+                    </p>
+                    <p style="color: #9ca3af; font-size: 12px; margin: 12px 0 0 0;">
+                      This is an automated security confirmation. Please do not reply to this message.
+                    </p>
+                  </td>
+                </tr>
+                
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+  }
+
+  // ============ EMAIL TEMPLATES (Plain Text) ============
+
+  getPasswordResetText(name, resetLink) {
+    return `
+ELEVATE - Password Reset Request
+by Frequency Tuning
+
+Hi ${name},
+
+We received a request to reset the password for your Elevate account.
+
+To reset your password, visit this link:
+${resetLink}
+
+⚠️ IMPORTANT: This link will expire in 1 hour for security reasons.
+
+If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+
+© ${new Date().getFullYear()} Elevate by Frequency Tuning. All rights reserved.
+This is an automated security email. Please do not reply to this message.
+    `.trim();
+  }
+
+  getPasswordResetConfirmationText(name, loginLink) {
+    return `
+ELEVATE - Password Reset Successful
+by Frequency Tuning
+
+Hi ${name},
+
+✓ Password Reset Successful!
+
+Your password has been successfully changed. You can now log in to your Elevate account with your new password.
+
+To log in, visit: ${loginLink}
+
+🔒 SECURITY TIP
+If you didn't make this change or believe an unauthorized person has accessed your account, please contact our support team immediately.
+
+© ${new Date().getFullYear()} Elevate by Frequency Tuning. All rights reserved.
+This is an automated security confirmation. Please do not reply to this message.
+    `.trim();
+  }
+
+  // ============ SUBSCRIPTION REMINDER TEMPLATES ============
+  // (Keeping existing subscription reminder HTML/Text methods)
 
   get7DayReminderHTML(name, expiryDate, remainingDays, renewalLink) {
     return `
@@ -189,11 +421,8 @@ class EmailService {
               <a href="${renewalLink}" class="button">🔄 Renew Subscription</a>
             </div>
             
-            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
-            
             <div class="footer">
               <p>Best regards,<br>The Elevate Team</p>
-              <p>This is an automated message. Please do not reply to this email.</p>
             </div>
           </div>
         </div>
@@ -215,7 +444,6 @@ class EmailService {
           .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
           .highlight { background-color: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; }
           .button { background-color: #dc3545; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
         </style>
       </head>
       <body>
@@ -234,23 +462,8 @@ class EmailService {
               <p><strong>Days Remaining:</strong> ${remainingDays}</p>
             </div>
             
-            <p>Don't lose access to your premium music experience. Renew now to continue enjoying:</p>
-            <ul>
-              <li>🎵 Unlimited music streaming</li>
-              <li>📱 Offline downloads</li>
-              <li>🎧 High-quality audio</li>
-              <li>🚫 Ad-free experience</li>
-            </ul>
-            
             <div style="text-align: center;">
               <a href="${renewalLink}" class="button">🔄 Renew Now</a>
-            </div>
-            
-            <p><strong>Need help?</strong> Contact our support team for assistance.</p>
-            
-            <div class="footer">
-              <p>Best regards,<br>The Elevate Team</p>
-              <p>This is an automated message. Please do not reply to this email.</p>
             </div>
           </div>
         </div>
@@ -270,9 +483,7 @@ class EmailService {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background-color: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .highlight { background-color: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; }
           .button { background-color: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-size: 16px; font-weight: bold; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
         </style>
       </head>
       <body>
@@ -284,24 +495,8 @@ class EmailService {
           <div class="content">
             <h3>Hi ${name},</h3>
             <p><strong>FINAL REMINDER:</strong> Your Elevate subscription expires <strong>tomorrow</strong>!</p>
-            
-            <div class="highlight">
-              <h4>⏰ Time is Running Out:</h4>
-              <p><strong>Expiry Date:</strong> ${expiryDate}</p>
-              <p><strong>Status:</strong> Expires in 24 hours</p>
-            </div>
-            
-            <p>This is your last chance to renew and keep your premium music experience. Don't let your subscription lapse!</p>
-            
             <div style="text-align: center;">
               <a href="${renewalLink}" class="button">🔄 RENEW NOW</a>
-            </div>
-            
-            <p><strong>Questions?</strong> Our support team is here to help you renew your subscription.</p>
-            
-            <div class="footer">
-              <p>Best regards,<br>The Elevate Team</p>
-              <p>This is an automated message. Please do not reply to this email.</p>
             </div>
           </div>
         </div>
@@ -321,9 +516,7 @@ class EmailService {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { background-color: #6c757d; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
           .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .highlight { background-color: #f8d7da; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; }
           .button { background-color: #6F41F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
         </style>
       </head>
       <body>
@@ -335,31 +528,9 @@ class EmailService {
           <div class="content">
             <h3>Hi ${name},</h3>
             <p>Your Elevate subscription expired on <strong>${expiryDate}</strong>. We miss you!</p>
-            
-            <div class="highlight">
-              <h4>📅 Subscription Status:</h4>
-              <p><strong>Expiry Date:</strong> ${expiryDate}</p>
-              <p><strong>Status:</strong> Expired</p>
-            </div>
-            
-            <p>Don't worry - you can reactivate your subscription anytime and get back to enjoying:</p>
-            <ul>
-              <li>🎵 Unlimited music streaming</li>
-              <li>📱 Offline downloads</li>
-              <li>🎧 High-quality audio</li>
-              <li>🚫 Ad-free experience</li>
-            </ul>
-            
             <div style="text-align: center;">
               <a href="${renewalLink}" class="button">🔄 Reactivate Subscription</a>
             </div>
-            
-            <p>We'd love to have you back! Contact our support team if you need any assistance.</p>
-            
-            <div class="footer">
-              <p>Best regards,<br>The Elevate Team</p>
-              <p>This is an automated message. Please do not reply to this email.</p>
-            </div>
           </div>
         </div>
       </body>
@@ -367,348 +538,21 @@ class EmailService {
     `;
   }
 
-  // Text versions for email clients that don't support HTML
+  // Text versions
   get7DayReminderText(name, expiryDate, remainingDays, renewalLink) {
-    return `
-Hi ${name},
-
-Your Elevate subscription will expire in ${remainingDays} days. Don't lose access to your premium music features!
-
-Subscription Details:
-- Expiry Date: ${expiryDate}
-- Days Remaining: ${remainingDays}
-
-Continue enjoying unlimited access to:
-- Unlimited music streaming
-- Offline downloads
-- High-quality audio
-- Ad-free experience
-
-Renew your subscription: ${renewalLink}
-
-If you have any questions, please contact our support team.
-
-Best regards,
-The Elevate Team
-    `;
+    return `Hi ${name},\n\nYour Elevate subscription will expire in ${remainingDays} days.\nExpiry Date: ${expiryDate}\n\nRenew: ${renewalLink}`;
   }
 
   get3DayReminderText(name, expiryDate, remainingDays, renewalLink) {
-    return `
-Hi ${name},
-
-URGENT: Your Elevate subscription will expire in just ${remainingDays} days!
-
-Action Required:
-- Expiry Date: ${expiryDate}
-- Days Remaining: ${remainingDays}
-
-Don't lose access to your premium music experience. Renew now!
-
-Renew your subscription: ${renewalLink}
-
-Need help? Contact our support team for assistance.
-
-Best regards,
-The Elevate Team
-    `;
+    return `Hi ${name},\n\nURGENT: Your subscription expires in ${remainingDays} days!\nExpiry Date: ${expiryDate}\n\nRenew now: ${renewalLink}`;
   }
 
   get1DayReminderText(name, expiryDate, remainingDays, renewalLink) {
-    return `
-Hi ${name},
-
-FINAL REMINDER: Your Elevate subscription expires tomorrow!
-
-Time is Running Out:
-- Expiry Date: ${expiryDate}
-- Status: Expires in 24 hours
-
-This is your last chance to renew and keep your premium music experience!
-
-Renew now: ${renewalLink}
-
-Questions? Our support team is here to help you renew your subscription.
-
-Best regards,
-The Elevate Team
-    `;
+    return `Hi ${name},\n\nFINAL REMINDER: Your subscription expires tomorrow!\nExpiry Date: ${expiryDate}\n\nRenew now: ${renewalLink}`;
   }
 
   getExpiredReminderText(name, expiryDate, renewalLink) {
-    return `
-Hi ${name},
-
-Your Elevate subscription expired on ${expiryDate}. We miss you!
-
-Subscription Status:
-- Expiry Date: ${expiryDate}
-- Status: Expired
-
-Don't worry - you can reactivate your subscription anytime and get back to enjoying:
-- Unlimited music streaming
-- Offline downloads
-- High-quality audio
-- Ad-free experience
-
-Reactivate your subscription: ${renewalLink}
-
-We'd love to have you back! Contact our support team if you need any assistance.
-
-Best regards,
-The Elevate Team
-    `;
-  }
-
-  // ============ PASSWORD RESET EMAIL METHODS ============
-
-  async sendPasswordResetEmail(user, resetToken) {
-    // For Flutter app, you might want to use a web URL or deep link
-    const resetLink = `https://your-flutter-app.com/reset-password/${resetToken}`;
-    
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@elevate.com',
-      to: user.email,
-      subject: 'Password Reset Request - Elevate',
-      html: this.getPasswordResetHTML(user.name, resetLink),
-      text: this.getPasswordResetText(user.name, resetLink),
-    };
-
-    console.log('Attempting to send password reset email to:', user.email);
-    console.log('Email config check:', {
-      user: process.env.EMAIL_USER ? 'Set' : 'Not set',
-      pass: process.env.EMAIL_PASS ? 'Set' : 'Not set',
-      from: process.env.EMAIL_FROM || 'Using default',
-      sendgrid: process.env.SENDGRID_API_KEY ? 'Available' : 'Not available'
-    });
-
-    // Try Gmail first
-    try {
-      console.log('Trying Gmail SMTP...');
-      const result = await this.gmailTransporter.sendMail(mailOptions);
-      console.log('✅ Password reset email sent successfully via Gmail:', result.messageId);
-      return { success: true, messageId: result.messageId, provider: 'gmail' };
-    } catch (gmailError) {
-      console.log('❌ Gmail SMTP failed:', gmailError.message);
-      console.log('Gmail error details:', {
-        code: gmailError.code,
-        command: gmailError.command,
-        response: gmailError.response
-      });
-      
-      // Try SendGrid as fallback
-      if (process.env.SENDGRID_API_KEY) {
-        try {
-          console.log('Trying SendGrid SMTP...');
-          const result = await this.sendgridTransporter.sendMail(mailOptions);
-          console.log('✅ Password reset email sent successfully via SendGrid:', result.messageId);
-          return { success: true, messageId: result.messageId, provider: 'sendgrid' };
-        } catch (sendgridError) {
-          console.log('❌ SendGrid SMTP failed:', sendgridError.message);
-          console.log('SendGrid error details:', {
-            code: sendgridError.code,
-            command: sendgridError.command,
-            response: sendgridError.response
-          });
-        }
-      }
-
-      // If both fail, return error
-      console.log('❌ All email providers failed');
-      return { 
-        success: false, 
-        error: `Gmail: ${gmailError.message}${process.env.SENDGRID_API_KEY ? `, SendGrid: ${sendgridError.message}` : ''}` 
-      };
-    }
-  }
-
-  async sendPasswordResetConfirmationEmail(user) {
-    const mailOptions = {
-      from: process.env.EMAIL_FROM || 'noreply@elevate.com',
-      to: user.email,
-      subject: 'Password Reset Successful - Elevate',
-      html: this.getPasswordResetConfirmationHTML(user.name),
-      text: this.getPasswordResetConfirmationText(user.name),
-    };
-
-    // Try Gmail first
-    try {
-      const result = await this.gmailTransporter.sendMail(mailOptions);
-      console.log('✅ Password reset confirmation email sent successfully via Gmail:', result.messageId);
-      return { success: true, messageId: result.messageId, provider: 'gmail' };
-    } catch (gmailError) {
-      console.log('❌ Gmail SMTP failed:', gmailError.message);
-      
-      // Try SendGrid as fallback
-      if (process.env.SENDGRID_API_KEY) {
-        try {
-          const result = await this.sendgridTransporter.sendMail(mailOptions);
-          console.log('✅ Password reset confirmation email sent successfully via SendGrid:', result.messageId);
-          return { success: true, messageId: result.messageId, provider: 'sendgrid' };
-        } catch (sendgridError) {
-          console.log('❌ SendGrid SMTP failed:', sendgridError.message);
-        }
-      }
-
-      // If both fail, return error
-      console.log('❌ All email providers failed');
-      return { 
-        success: false, 
-        error: `Gmail: ${gmailError.message}${process.env.SENDGRID_API_KEY ? `, SendGrid: ${sendgridError.message}` : ''}` 
-      };
-    }
-  }
-
-  getPasswordResetHTML(name, resetLink) {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Password Reset Request</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #6F41F3; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .warning { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
-          .button { background-color: #6F41F3; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; font-weight: bold; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          .security-note { background-color: #e7f3ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196F3; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>🔐 Elevate Music</h1>
-            <h2>Password Reset Request</h2>
-          </div>
-          <div class="content">
-            <h3>Hi ${name},</h3>
-            <p>We received a request to reset your password for your Elevate account. If you made this request, click the button below to reset your password:</p>
-            
-            <div style="text-align: center;">
-              <a href="${resetLink}" class="button">🔄 Reset Password</a>
-            </div>
-            
-            <div class="warning">
-              <h4>⚠️ Important:</h4>
-              <p><strong>This link will expire in 1 hour</strong> for security reasons.</p>
-            </div>
-            
-            <p>If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="word-break: break-all; color: #6F41F3;">${resetLink}</p>
-            
-            <div class="security-note">
-              <h4>🛡️ Security Notice:</h4>
-              <p><strong>If you didn't request this password reset, please ignore this email.</strong> Your password will remain unchanged and your account is secure.</p>
-              <p>If you're concerned about your account security, please contact our support team immediately.</p>
-            </div>
-            
-            <div class="footer">
-              <p>Best regards,<br>The Elevate Team</p>
-              <p>This is an automated message. Please do not reply to this email.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-  }
-
-  getPasswordResetText(name, resetLink) {
-    return `
-Hi ${name},
-
-We received a request to reset your password for your Elevate account.
-
-Click the link below to reset your password:
-${resetLink}
-
-⚠️ IMPORTANT: This link will expire in 1 hour for security reasons.
-
-🛡️ SECURITY NOTICE:
-If you didn't request this password reset, please ignore this email. Your password will remain unchanged and your account is secure.
-
-If you're concerned about your account security, please contact our support team immediately.
-
-Best regards,
-The Elevate Team
-
-This is an automated message. Please do not reply to this email.
-    `;
-  }
-
-  getPasswordResetConfirmationHTML(name) {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Password Reset Successful</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background-color: #28a745; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
-          .success { background-color: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745; }
-          .button { background-color: #6F41F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin: 20px 0; }
-          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
-          .security-note { background-color: #fff3cd; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>✅ Elevate Music</h1>
-            <h2>Password Reset Successful</h2>
-          </div>
-          <div class="content">
-            <h3>Hi ${name},</h3>
-            
-            <div class="success">
-              <h4>✅ Success!</h4>
-              <p>Your password has been successfully reset. You can now log in to your Elevate account with your new password.</p>
-            </div>
-            
-            <div style="text-align: center;">
-              <a href="${process.env.FRONTEND_URL}/login" class="button">🔐 Login to Your Account</a>
-            </div>
-            
-            <div class="security-note">
-              <h4>🛡️ Security Reminder:</h4>
-              <p><strong>If you didn't make this change,</strong> please contact our support team immediately. Your account security is our top priority.</p>
-            </div>
-            
-            <p>Thank you for using Elevate!</p>
-            
-            <div class="footer">
-              <p>Best regards,<br>The Elevate Team</p>
-              <p>This is an automated message. Please do not reply to this email.</p>
-            </div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-  }
-
-  getPasswordResetConfirmationText(name) {
-    return `
-Hi ${name},
-
-✅ SUCCESS! Your password has been successfully reset.
-
-You can now log in to your Elevate account with your new password.
-
-🛡️ SECURITY REMINDER:
-If you didn't make this change, please contact our support team immediately. Your account security is our top priority.
-
-Thank you for using Elevate!
-
-Best regards,
-The Elevate Team
-
-This is an automated message. Please do not reply to this email.
-    `;
+    return `Hi ${name},\n\nYour subscription expired on ${expiryDate}.\n\nReactivate: ${renewalLink}`;
   }
 }
 
