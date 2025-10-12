@@ -1,7 +1,9 @@
 import express from 'express';
 import {
   getActiveTerms,
+  getActiveDisclaimer,
   getAllTermsVersions,
+  getAllDisclaimerVersions,
   getTermsById,
   createTerms,
   updateTerms,
@@ -14,11 +16,13 @@ import { adminOnly } from '../middleware/adminMiddleware.js';
 
 const router = express.Router();
 
-// Public route (for Flutter app and users)
+// Public routes (for Flutter app and users)
 router.get('/active', getActiveTerms);
+router.get('/disclaimer/active', getActiveDisclaimer);
 
 // Admin routes (for web admin panel)
 router.get('/admin', protect, adminOnly, getAllTermsVersions);
+router.get('/admin/disclaimer', protect, adminOnly, getAllDisclaimerVersions);
 router.post('/admin', protect, adminOnly, createTerms);
 router.get('/admin/:id', protect, adminOnly, getTermsById);
 router.put('/admin/:id', protect, adminOnly, updateTerms);

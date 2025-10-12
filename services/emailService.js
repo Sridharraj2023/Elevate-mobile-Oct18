@@ -28,9 +28,9 @@ class EmailService {
       const { data, error } = await this.resend.emails.send({
         from: process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>',
         to: [user.email],
-        subject: template.subject,
-        html: template.html,
-        text: template.text,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
       });
 
       if (error) {

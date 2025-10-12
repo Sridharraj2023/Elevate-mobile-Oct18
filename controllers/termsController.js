@@ -5,7 +5,10 @@ import TermsAndConditions from '../models/TermsAndConditions.js';
 // @route   GET /api/terms/active
 // @access  Public
 const getActiveTerms = asyncHandler(async (req, res) => {
-  const terms = await TermsAndConditions.findOne({ isActive: true });
+  const terms = await TermsAndConditions.findOne({ 
+    isActive: true, 
+    documentType: 'terms' 
+  });
   
   if (!terms) {
     res.status(404);
@@ -15,14 +18,41 @@ const getActiveTerms = asyncHandler(async (req, res) => {
   res.json(terms);
 });
 
+// @desc    Get active disclaimer (Public - for Flutter app)
+// @route   GET /api/terms/disclaimer/active
+// @access  Public
+const getActiveDisclaimer = asyncHandler(async (req, res) => {
+  const disclaimer = await TermsAndConditions.findOne({ 
+    isActive: true, 
+    documentType: 'disclaimer' 
+  });
+  
+  if (!disclaimer) {
+    res.status(404);
+    throw new Error('No active disclaimer found');
+  }
+  
+  res.json(disclaimer);
+});
+
 // @desc    Get all terms versions (Admin only)
 // @route   GET /api/terms/admin
 // @access  Private/Admin
 const getAllTermsVersions = asyncHandler(async (req, res) => {
-  const terms = await TermsAndConditions.find()
+  const terms = await TermsAndConditions.find({ documentType: 'terms' })
     .populate('publishedBy', 'name email')
     .sort({ createdAt: -1 });
   res.json(terms);
+});
+
+// @desc    Get all disclaimer versions (Admin only)
+// @route   GET /api/terms/admin/disclaimer
+// @access  Private/Admin
+const getAllDisclaimerVersions = asyncHandler(async (req, res) => {
+  const disclaimers = await TermsAndConditions.find({ documentType: 'disclaimer' })
+    .populate('publishedBy', 'name email')
+    .sort({ createdAt: -1 });
+  res.json(disclaimers);
 });
 
 // @desc    Get specific terms version
@@ -160,7 +190,9 @@ const deleteTerms = asyncHandler(async (req, res) => {
 
 export {
   getActiveTerms,
+  getActiveDisclaimer,
   getAllTermsVersions,
+  getAllDisclaimerVersions,
   getTermsById,
   createTerms,
   updateTerms,
