@@ -20,10 +20,10 @@ const testLogin = async () => {
     console.log('Login response:', data);
     
     if (response.ok && data.token) {
-      console.log('✅ Login successful! Token received.');
+      console.log('Login successful! Token received.');
       
       // Test music upload endpoint
-      console.log('\nTesting music upload endpoint...');
+      console.log('\n Testing music upload endpoint...');
       const uploadResponse = await fetch('https://elevate-backend-s28.onrender.com/api/music/create', {
         method: 'POST',
         headers: {
@@ -44,7 +44,7 @@ const testLogin = async () => {
       console.log('Upload response status:', uploadResponse.status);
       console.log('Upload response:', uploadData);
     } else {
-      console.log('❌ Login failed');
+      console.log(' Login failed');
     }
     
   } catch (error) {

@@ -110,7 +110,7 @@ const registerUser = asyncHandler(async (req, res) => {
     if (user) {
       const token = generateToken(user._id);
 
-    // ✅ Set the token as an HTTP-only cookie
+    //  Set the token as an HTTP-only cookie
     res.cookie('jwt', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // Set true in production (HTTPS)

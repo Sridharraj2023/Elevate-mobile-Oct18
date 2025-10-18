@@ -6,7 +6,7 @@ const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3ZWU0NDE1ND
 
 async function debugDatabase() {
   try {
-    console.log('🔍 Debugging database state...');
+    console.log('Debugging database state...');
     
     const response = await axios.get(API_URL, {
       headers: {
@@ -15,12 +15,12 @@ async function debugDatabase() {
       }
     });
 
-    console.log('📊 Raw API Response:');
+    console.log('Raw API Response:');
     console.log(JSON.stringify(response.data, null, 2));
     
     // Check each record individually
     response.data.forEach((music, index) => {
-      console.log(`\n🎵 Record ${index + 1}: ${music.title}`);
+      console.log(`\n Record ${index + 1}: ${music.title}`);
       console.log(`   ID: ${music._id}`);
       console.log(`   File URL: ${music.fileUrl}`);
       console.log(`   Thumbnail URL: ${music.thumbnailUrl}`);
@@ -28,7 +28,7 @@ async function debugDatabase() {
     });
 
   } catch (error) {
-    console.error('❌ Error:', error.response?.data || error.message);
+    console.error(' Error:', error.response?.data || error.message);
   }
 }
 

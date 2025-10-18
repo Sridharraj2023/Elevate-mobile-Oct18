@@ -11,11 +11,11 @@ class EmailService {
 
   verifyConfiguration() {
     if (!process.env.RESEND_API_KEY) {
-      console.warn('⚠️  WARNING: RESEND_API_KEY is not set in .env file');
+      console.warn('  WARNING: RESEND_API_KEY is not set in .env file');
       console.warn('   Emails will not be sent until this is configured');
     } else {
-      console.log('✅ Resend email service initialized');
-      console.log('📧 Email from:', process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>');
+      console.log('Resend email service initialized');
+      console.log('Email from:', process.env.EMAIL_FROM || 'Elevate <onboarding@resend.dev>');
     }
   }
 
@@ -34,15 +34,15 @@ class EmailService {
       });
 
       if (error) {
-        console.error('❌ Resend error:', error);
+        console.error(' Resend error:', error);
         return { success: false, error: error.message };
       }
 
-      console.log('✅ Reminder email sent successfully via Resend');
-      console.log('📬 Email ID:', data.id);
+      console.log('Reminder email sent successfully via Resend');
+      console.log('Email ID:', data.id);
       return { success: true, messageId: data.id, provider: 'resend' };
     } catch (error) {
-      console.error('❌ Error sending reminder email:', error);
+      console.error(' Error sending reminder email:', error);
       return { success: false, error: error.message };
     }
   }
@@ -90,7 +90,7 @@ class EmailService {
     // Construct reset link for Flutter app
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
     
-    console.log('📧 Sending password reset email to:', user.email);
+    console.log('Sending password reset email to:', user.email);
 
     try {
       const { data, error } = await this.resend.emails.send({
@@ -102,15 +102,15 @@ class EmailService {
       });
 
       if (error) {
-        console.error('❌ Resend API error:', error);
+        console.error(' Resend API error:', error);
         return { success: false, error: error.message };
       }
 
-      console.log('✅ Password reset email sent successfully via Resend');
-      console.log('📬 Email ID:', data.id);
+      console.log('Password reset email sent successfully via Resend');
+      console.log('Email ID:', data.id);
       return { success: true, messageId: data.id, provider: 'resend' };
     } catch (error) {
-      console.error('❌ Error sending password reset email:', error);
+      console.error(' Error sending password reset email:', error);
       return { success: false, error: error.message };
     }
   }
@@ -118,7 +118,7 @@ class EmailService {
   async sendPasswordResetConfirmationEmail(user) {
     const loginLink = `${process.env.FRONTEND_URL}/login`;
     
-    console.log('📧 Sending password reset confirmation to:', user.email);
+    console.log('Sending password reset confirmation to:', user.email);
 
     try {
       const { data, error } = await this.resend.emails.send({
@@ -130,15 +130,15 @@ class EmailService {
       });
 
       if (error) {
-        console.error('❌ Resend API error:', error);
+        console.error(' Resend API error:', error);
         return { success: false, error: error.message };
       }
 
-      console.log('✅ Password reset confirmation sent successfully via Resend');
-      console.log('📬 Email ID:', data.id);
+      console.log('Password reset confirmation sent successfully via Resend');
+      console.log('Email ID:', data.id);
       return { success: true, messageId: data.id, provider: 'resend' };
     } catch (error) {
-      console.error('❌ Error sending confirmation email:', error);
+      console.error(' Error sending confirmation email:', error);
       return { success: false, error: error.message };
     }
   }
@@ -204,7 +204,7 @@ class EmailService {
                       <tr>
                         <td style="padding: 16px 20px;">
                           <p style="color: #856404; font-size: 14px; margin: 0; line-height: 1.6;">
-                            <strong>⚠️ Important Security Notice</strong><br>
+                            <strong> Important Security Notice</strong><br>
                             This password reset link will expire in <strong>1 hour</strong> for your security.
                           </p>
                         </td>
@@ -300,7 +300,7 @@ class EmailService {
                       <tr>
                         <td style="padding: 16px 20px;">
                           <p style="color: #1e40af; font-size: 14px; margin: 0; line-height: 1.6; text-align: left;">
-                            <strong>🔒 Security Tip</strong><br>
+                            <strong> Security Tip</strong><br>
                             If you didn't make this change or believe an unauthorized person has accessed your account, please contact our support team immediately.
                           </p>
                         </td>
@@ -344,7 +344,7 @@ We received a request to reset the password for your Elevate account.
 To reset your password, visit this link:
 ${resetLink}
 
-⚠️ IMPORTANT: This link will expire in 1 hour for security reasons.
+ IMPORTANT: This link will expire in 1 hour for security reasons.
 
 If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
 
@@ -366,7 +366,7 @@ Your password has been successfully changed. You can now log in to your Elevate 
 
 To log in, visit: ${loginLink}
 
-🔒 SECURITY TIP
+ SECURITY TIP
 If you didn't make this change or believe an unauthorized person has accessed your account, please contact our support team immediately.
 
 © ${new Date().getFullYear()} Elevate by Frequency Tuning. All rights reserved.
@@ -396,7 +396,7 @@ This is an automated security confirmation. Please do not reply to this message.
       <body>
         <div class="container">
           <div class="header">
-            <h1>🎵 Elevate Music</h1>
+            <h1> Elevate Music</h1>
             <h2>Subscription Reminder</h2>
           </div>
           <div class="content">
@@ -404,21 +404,21 @@ This is an automated security confirmation. Please do not reply to this message.
             <p>Your Elevate subscription will expire in <strong>${remainingDays} days</strong>. Don't lose access to your premium music features!</p>
             
             <div class="highlight">
-              <h4>📅 Subscription Details:</h4>
+              <h4>Subscription Details:</h4>
               <p><strong>Expiry Date:</strong> ${expiryDate}</p>
               <p><strong>Days Remaining:</strong> ${remainingDays}</p>
             </div>
             
             <p>Continue enjoying unlimited access to:</p>
             <ul>
-              <li>🎵 Unlimited music streaming</li>
-              <li>📱 Offline downloads</li>
+              <li> Unlimited music streaming</li>
+              <li> Offline downloads</li>
               <li>🎧 High-quality audio</li>
               <li>🚫 Ad-free experience</li>
             </ul>
             
             <div style="text-align: center;">
-              <a href="${renewalLink}" class="button">🔄 Renew Subscription</a>
+              <a href="${renewalLink}" class="button"> Renew Subscription</a>
             </div>
             
             <div class="footer">
@@ -449,7 +449,7 @@ This is an automated security confirmation. Please do not reply to this message.
       <body>
         <div class="container">
           <div class="header">
-            <h1>⚠️ Elevate Music</h1>
+            <h1> Elevate Music</h1>
             <h2>Urgent: Subscription Expiring Soon</h2>
           </div>
           <div class="content">
@@ -463,7 +463,7 @@ This is an automated security confirmation. Please do not reply to this message.
             </div>
             
             <div style="text-align: center;">
-              <a href="${renewalLink}" class="button">🔄 Renew Now</a>
+              <a href="${renewalLink}" class="button"> Renew Now</a>
             </div>
           </div>
         </div>
@@ -496,7 +496,7 @@ This is an automated security confirmation. Please do not reply to this message.
             <h3>Hi ${name},</h3>
             <p><strong>FINAL REMINDER:</strong> Your Elevate subscription expires <strong>tomorrow</strong>!</p>
             <div style="text-align: center;">
-              <a href="${renewalLink}" class="button">🔄 RENEW NOW</a>
+              <a href="${renewalLink}" class="button"> RENEW NOW</a>
             </div>
           </div>
         </div>
@@ -529,7 +529,7 @@ This is an automated security confirmation. Please do not reply to this message.
             <h3>Hi ${name},</h3>
             <p>Your Elevate subscription expired on <strong>${expiryDate}</strong>. We miss you!</p>
             <div style="text-align: center;">
-              <a href="${renewalLink}" class="button">🔄 Reactivate Subscription</a>
+              <a href="${renewalLink}" class="button"> Reactivate Subscription</a>
             </div>
           </div>
         </div>

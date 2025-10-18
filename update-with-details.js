@@ -6,7 +6,7 @@ const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3ZWU0NDE1ND
 
 async function updateRecordsWithDetails() {
   try {
-    console.log('🔍 Getting all music records...');
+    console.log('Getting all music records...');
     
     // Get all records
     const response = await axios.get(`${API_URL}/admin`, {
@@ -16,13 +16,13 @@ async function updateRecordsWithDetails() {
       }
     });
 
-    console.log(`📊 Found ${response.data.length} music records`);
+    console.log(` Found ${response.data.length} music records`);
     
     let updatedCount = 0;
     
     // Update each record individually with detailed logging
     for (const music of response.data) {
-      console.log(`\n🎵 Processing: ${music.title} (ID: ${music._id})`);
+      console.log(`\n Processing: ${music.title} (ID: ${music._id})`);
       
       let needsUpdate = false;
       const updateData = {};
@@ -35,8 +35,8 @@ async function updateRecordsWithDetails() {
         );
         updateData.fileUrl = newFileUrl;
         needsUpdate = true;
-        console.log(`   🔄 Old fileUrl: ${music.fileUrl}`);
-        console.log(`   ✅ New fileUrl: ${newFileUrl}`);
+        console.log(`    Old fileUrl: ${music.fileUrl}`);
+        console.log(`    New fileUrl: ${newFileUrl}`);
       }
       
       // Check and update thumbnailUrl
@@ -47,15 +47,15 @@ async function updateRecordsWithDetails() {
         );
         updateData.thumbnailUrl = newThumbnailUrl;
         needsUpdate = true;
-        console.log(`   🔄 Old thumbnailUrl: ${music.thumbnailUrl}`);
-        console.log(`   ✅ New thumbnailUrl: ${newThumbnailUrl}`);
+        console.log(`    Old thumbnailUrl: ${music.thumbnailUrl}`);
+        console.log(`    New thumbnailUrl: ${newThumbnailUrl}`);
       }
       
       // Update the record if needed
       if (needsUpdate) {
         try {
-          console.log(`   📤 Sending update request...`);
-          console.log(`   📤 Update data:`, updateData);
+          console.log(`Sending update request...`);
+          console.log(`Update data:`, updateData);
           
           const updateResponse = await axios.put(`${API_URL}/${music._id}`, updateData, {
             headers: {
@@ -64,31 +64,31 @@ async function updateRecordsWithDetails() {
             }
           });
           
-          console.log(`   ✅ Update response:`, updateResponse.data);
+          console.log(`    Update response:`, updateResponse.data);
           updatedCount++;
-          console.log(`   ✅ Successfully updated record: ${music.title}`);
+          console.log(`    Successfully updated record: ${music.title}`);
         } catch (updateError) {
-          console.error(`   ❌ Failed to update ${music.title}:`);
-          console.error(`   ❌ Error status:`, updateError.response?.status);
-          console.error(`   ❌ Error data:`, updateError.response?.data);
-          console.error(`   ❌ Error message:`, updateError.message);
+          console.error(` Failed to update ${music.title}:`);
+          console.error(` Error status:`, updateError.response?.status);
+          console.error(` Error data:`, updateError.response?.data);
+          console.error(`Error message:`, updateError.message);
         }
       } else {
-        console.log(`   ⏭️ No changes needed for: ${music.title}`);
+        console.log(`    No changes needed for: ${music.title}`);
       }
     }
     
-    console.log(`\n📊 Update Summary:`);
-    console.log(`✅ Successfully updated: ${updatedCount} records`);
-    console.log(`⏭️ No changes needed: ${response.data.length - updatedCount} records`);
+    console.log(`\n Update Summary:`);
+    console.log(` Successfully updated: ${updatedCount} records`);
+    console.log(` No changes needed: ${response.data.length - updatedCount} records`);
     
     if (updatedCount > 0) {
-      console.log('\n🎉 Database URLs updated successfully!');
-      console.log('🔄 Now restart your Flutter app to test music playback');
+      console.log('\n Database URLs updated successfully!');
+      console.log('Now restart your Flutter app to test music playback');
     }
 
   } catch (error) {
-    console.error('❌ Error updating records:', error.response?.data || error.message);
+    console.error(' Error updating records:', error.response?.data || error.message);
   }
 }
 

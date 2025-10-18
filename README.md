@@ -2,7 +2,7 @@
 
 A comprehensive Node.js backend API for the Elevate Music application with dynamic subscription pricing management.
 
-## 🚀 Features
+##  Features
 
 - **Dynamic Subscription Pricing**: Admin can manage subscription plans with real-time pricing updates
 - **Stripe Integration**: Automatic payment processing with product and price management
@@ -22,7 +22,7 @@ A comprehensive Node.js backend API for the Elevate Music application with dynam
 - **File Upload**: Multer
 - **Email**: Nodemailer
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 backend/
@@ -101,7 +101,7 @@ The backend includes a sophisticated subscription pricing system that allows:
 - `PUT /api/categories/:id` - Update category (admin)
 - `DELETE /api/categories/:id` - Delete category (admin)
 
-## ⚙️ Installation
+##  Installation
 
 1. **Clone the repository**
    ```bash
@@ -147,7 +147,7 @@ The backend includes a sophisticated subscription pricing system that allows:
 | `EMAIL_USER` | Email service username | No |
 | `EMAIL_PASS` | Email service password | No |
 
-## 🚀 Deployment
+##  Deployment
 
 ### Render.com
 1. Connect your GitHub repository
@@ -193,7 +193,7 @@ Authorization: Bearer <jwt_token>
 }
 ```
 
-## 🔒 Security Features
+##  Security Features
 
 - JWT-based authentication
 - Admin role authorization
@@ -202,7 +202,7 @@ Authorization: Bearer <jwt_token>
 - File upload security
 - Environment variable protection
 
-## 🧪 Testing
+##  Testing
 
 ```bash
 # Run tests (if available)
@@ -224,7 +224,7 @@ This project is proprietary software for the Elevate Music application.
 4. Test thoroughly
 5. Submit a pull request
 
-## 📞 Support
+##  Support
 
 For support, email admin@elevateintune.com
 

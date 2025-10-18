@@ -30,12 +30,12 @@ const databaseFiles = [
 ];
 
 function analyzeDuplicates() {
-  console.log('🔍 Analyzing files in uploads directory...');
+  console.log('Analyzing files in uploads directory...');
   
   const uploadsDir = './uploads';
   const files = fs.readdirSync(uploadsDir);
   
-  console.log(`📊 Total files in uploads directory: ${files.length}`);
+  console.log(`Total files in uploads directory: ${files.length}`);
   
   // Group files by base name (without timestamp prefix)
   const fileGroups = {};
@@ -60,11 +60,11 @@ function analyzeDuplicates() {
     }
   });
   
-  console.log('\n📋 Duplicate Analysis:');
-  console.log(`🔍 Found ${Object.keys(duplicates).length} groups with duplicates`);
+  console.log('\n Duplicate Analysis:');
+  console.log(`Found ${Object.keys(duplicates).length} groups with duplicates`);
   
   Object.keys(duplicates).forEach(baseName => {
-    console.log(`\n📁 ${baseName}:`);
+    console.log(`\n ${baseName}:`);
     duplicates[baseName].forEach(file => {
       const filePath = path.join(uploadsDir, file);
       const stats = fs.statSync(filePath);
@@ -76,13 +76,13 @@ function analyzeDuplicates() {
 }
 
 async function uploadDatabaseFiles() {
-  console.log('\n🚀 Uploading files that are currently in the database...');
+  console.log('\n Uploading files that are currently in the database...');
   
   const results = [];
   
   for (const dbFile of databaseFiles) {
     try {
-      console.log(`\n🔄 Processing: ${dbFile.title}`);
+      console.log(`\n Processing: ${dbFile.title}`);
       
       // Extract filename from URL
       const fileUrl = dbFile.fileUrl;
@@ -91,20 +91,20 @@ async function uploadDatabaseFiles() {
       const fileName = fileUrl.split('/').pop();
       const thumbnailName = thumbnailUrl.split('/').pop();
       
-      console.log(`   📁 Audio file: ${fileName}`);
-      console.log(`   🖼️ Thumbnail: ${thumbnailName}`);
+      console.log(`Audio file: ${fileName}`);
+      console.log(`Thumbnail: ${thumbnailName}`);
       
       // Check if files exist locally
       const audioPath = `./uploads/${fileName}`;
       const thumbnailPath = `./uploads/${thumbnailName}`;
       
       if (!fs.existsSync(audioPath)) {
-        console.log(`   ❌ Audio file not found: ${audioPath}`);
+        console.log(`Audio file not found: ${audioPath}`);
         continue;
       }
       
       if (!fs.existsSync(thumbnailPath)) {
-        console.log(`   ❌ Thumbnail not found: ${thumbnailPath}`);
+        console.log(`Thumbnail not found: ${thumbnailPath}`);
         continue;
       }
       
@@ -126,7 +126,7 @@ async function uploadDatabaseFiles() {
       });
       
       // Upload to production server
-      console.log('   📤 Uploading to production server...');
+      console.log('Uploading to production server...');
       const uploadResponse = await axios.post(PRODUCTION_API_URL, formData, {
         headers: {
           'Authorization': `Bearer ${ADMIN_TOKEN}`,
@@ -135,8 +135,8 @@ async function uploadDatabaseFiles() {
         timeout: 60000
       });
       
-      console.log('   ✅ Upload successful!');
-      console.log('   📊 Response:', uploadResponse.data);
+      console.log('Upload successful!');
+      console.log('Response:', uploadResponse.data);
       
       results.push({
         success: true,
@@ -145,7 +145,7 @@ async function uploadDatabaseFiles() {
       });
       
     } catch (error) {
-      console.error(`   ❌ Error processing ${dbFile.title}:`, error.response?.data || error.message);
+      console.error(`Error processing ${dbFile.title}:`, error.response?.data || error.message);
       results.push({
         success: false,
         title: dbFile.title,
@@ -169,25 +169,25 @@ async function main() {
     const uploadResults = await uploadDatabaseFiles();
     
     // Summary
-    console.log('\n📊 Upload Summary:');
+    console.log('\n Upload Summary:');
     const successful = uploadResults.filter(r => r.success).length;
     const failed = uploadResults.filter(r => !r.success).length;
     
-    console.log(`✅ Successful uploads: ${successful}`);
-    console.log(`❌ Failed uploads: ${failed}`);
+    console.log(`Successful uploads: ${successful}`);
+    console.log(`Failed uploads: ${failed}`);
     
     if (failed > 0) {
-      console.log('\n❌ Failed uploads:');
+      console.log('\n Failed uploads:');
       uploadResults.filter(r => !r.success).forEach(r => {
         console.log(`   - ${r.title}: ${r.error}`);
       });
     }
     
-    console.log('\n🎉 Process completed!');
-    console.log('🔄 Now restart your Flutter app to test music playback');
+    console.log('\n Process completed!');
+    console.log('Now restart your Flutter app to test music playback');
     
   } catch (error) {
-    console.error('❌ Error in main process:', error);
+    console.error('Error in main process:', error);
   }
 }
 

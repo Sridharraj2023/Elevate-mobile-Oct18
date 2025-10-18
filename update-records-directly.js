@@ -6,7 +6,7 @@ const ADMIN_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3ZWU0NDE1ND
 
 async function updateRecordsDirectly() {
   try {
-    console.log('🔍 Getting all music records...');
+    console.log(' Getting all music records...');
     
     // Get all records
     const response = await axios.get(`${API_URL}/admin`, {
@@ -16,13 +16,13 @@ async function updateRecordsDirectly() {
       }
     });
 
-    console.log(`📊 Found ${response.data.length} music records`);
+    console.log(`Found ${response.data.length} music records`);
     
     let updatedCount = 0;
     
     // Update each record individually
     for (const music of response.data) {
-      console.log(`\n🎵 Processing: ${music.title}`);
+      console.log(`\n Processing: ${music.title}`);
       
       let needsUpdate = false;
       const updateData = {};
@@ -35,7 +35,7 @@ async function updateRecordsDirectly() {
         );
         updateData.fileUrl = newFileUrl;
         needsUpdate = true;
-        console.log(`   ✅ New fileUrl: ${newFileUrl}`);
+        console.log(`New fileUrl: ${newFileUrl}`);
       }
       
       // Check and update thumbnailUrl
@@ -46,7 +46,7 @@ async function updateRecordsDirectly() {
         );
         updateData.thumbnailUrl = newThumbnailUrl;
         needsUpdate = true;
-        console.log(`   ✅ New thumbnailUrl: ${newThumbnailUrl}`);
+        console.log(`New thumbnailUrl: ${newThumbnailUrl}`);
       }
       
       // Update the record if needed
@@ -59,26 +59,26 @@ async function updateRecordsDirectly() {
             }
           });
           updatedCount++;
-          console.log(`   ✅ Updated record: ${music.title}`);
+          console.log(`Updated record: ${music.title}`);
         } catch (updateError) {
-          console.error(`   ❌ Failed to update ${music.title}:`, updateError.response?.data || updateError.message);
+          console.error(`Failed to update ${music.title}:`, updateError.response?.data || updateError.message);
         }
       } else {
-        console.log(`   ⏭️ No changes needed for: ${music.title}`);
+        console.log(`No changes needed for: ${music.title}`);
       }
     }
     
-    console.log(`\n📊 Update Summary:`);
-    console.log(`✅ Successfully updated: ${updatedCount} records`);
-    console.log(`⏭️ No changes needed: ${response.data.length - updatedCount} records`);
+    console.log(`\n Update Summary:`);
+    console.log(`Successfully updated: ${updatedCount} records`);
+    console.log(`No changes needed: ${response.data.length - updatedCount} records`);
     
     if (updatedCount > 0) {
-      console.log('\n🎉 Database URLs updated successfully!');
-      console.log('🔄 Now restart your Flutter app to test music playback');
+      console.log('\n Database URLs updated successfully!');
+      console.log('Now restart your Flutter app to test music playback');
     }
 
   } catch (error) {
-    console.error('❌ Error updating records:', error.response?.data || error.message);
+    console.error('Error updating records:', error.response?.data || error.message);
   }
 }
 

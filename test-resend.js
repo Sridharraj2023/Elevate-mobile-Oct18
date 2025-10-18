@@ -13,7 +13,7 @@ const colors = {
   blue: '\x1b[36m',
 };
 
-console.log(`\n${colors.blue}╔════════════════════════════════════════╗${colors.reset}`);
+console.log(`\n ${colors.blue}╔════════════════════════════════════════╗${colors.reset}`);
 console.log(`${colors.blue}║   RESEND EMAIL INTEGRATION TEST        ║${colors.reset}`);
 console.log(`${colors.blue}╚════════════════════════════════════════╝${colors.reset}\n`);
 
@@ -21,7 +21,7 @@ console.log(`${colors.blue}╚════════════════�
 console.log(`${colors.yellow}Checking environment variables...${colors.reset}`);
 
 if (!process.env.RESEND_API_KEY) {
-  console.error(`${colors.red}❌ ERROR: RESEND_API_KEY is not set in .env file${colors.reset}`);
+  console.error(`${colors.red} ERROR: RESEND_API_KEY is not set in .env file${colors.reset}`);
   console.log(`\nPlease add to your .env file:`);
   console.log(`RESEND_API_KEY=your_api_key_here\n`);
   process.exit(1);
@@ -30,7 +30,7 @@ if (!process.env.RESEND_API_KEY) {
 console.log(`${colors.green}✓ RESEND_API_KEY is set${colors.reset}`);
 
 if (!process.env.EMAIL_FROM) {
-  console.warn(`${colors.yellow}⚠️  WARNING: EMAIL_FROM is not set, using default${colors.reset}`);
+  console.warn(`${colors.yellow}  WARNING: EMAIL_FROM is not set, using default${colors.reset}`);
 } else {
   console.log(`${colors.green}✓ EMAIL_FROM is set: ${process.env.EMAIL_FROM}${colors.reset}`);
 }
@@ -46,11 +46,11 @@ console.log(`${colors.green}✓ Resend initialized${colors.reset}`);
     console.log(`\n${colors.yellow}Sending test email...${colors.reset}`);
     console.log(`${colors.blue}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
     
-    // ⚠️ IMPORTANT: Change this to your email address!
+    //  IMPORTANT: Change this to your email address!
     const testEmailAddress = '211400117@students.au.edu.pk'; // ← CHANGE THIS!
     
     if (testEmailAddress === 'YOUR_EMAIL@example.com') {
-      console.error(`\n${colors.red}❌ ERROR: Please update the testEmailAddress in this script${colors.reset}`);
+      console.error(`\n${colors.red} ERROR: Please update the testEmailAddress in this script${colors.reset}`);
       console.log(`${colors.yellow}Edit test-resend.js and change line 49 to your email address${colors.reset}\n`);
       process.exit(1);
     }
@@ -66,7 +66,7 @@ console.log(`${colors.green}✓ Resend initialized${colors.reset}`);
             <p style="color: white; margin: 5px 0;">by Frequency Tuning</p>
           </div>
           <div style="max-width: 600px; margin: 20px auto; background-color: white; padding: 40px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            <h2 style="color: #1a1a1a; margin-top: 0;">✅ Resend Integration Successful!</h2>
+            <h2 style="color: #1a1a1a; margin-top: 0;"> Resend Integration Successful!</h2>
             <p style="color: #4a4a4a; font-size: 16px; line-height: 1.6;">
               Congratulations! Your Resend email service is configured correctly and working perfectly.
             </p>
@@ -81,7 +81,7 @@ console.log(`${colors.green}✓ Resend initialized${colors.reset}`);
             </ul>
             <div style="background-color: #eff6ff; padding: 16px; border-left: 4px solid #3b82f6; border-radius: 4px; margin-top: 20px;">
               <p style="color: #1e40af; margin: 0; font-size: 14px;">
-                <strong>🎉 Next Steps:</strong> Your forgot password feature is ready to use!
+                <strong> Next Steps:</strong> Your forgot password feature is ready to use!
               </p>
             </div>
           </div>
@@ -96,7 +96,7 @@ console.log(`${colors.green}✓ Resend initialized${colors.reset}`);
 ELEVATE - Resend Integration Test
 by Frequency Tuning
 
-✅ Resend Integration Successful!
+ Resend Integration Successful!
 
 Congratulations! Your Resend email service is configured correctly and working perfectly.
 
@@ -106,14 +106,14 @@ You can now use Resend to send:
 • User notifications
 • Subscription reminders
 
-🎉 Next Steps: Your forgot password feature is ready to use!
+ Next Steps: Your forgot password feature is ready to use!
 
 Test email sent at ${new Date().toLocaleString()}
       `.trim(),
     });
 
     if (error) {
-      console.error(`\n${colors.red}❌ FAILED: Email could not be sent${colors.reset}`);
+      console.error(`\n${colors.red} FAILED: Email could not be sent${colors.reset}`);
       console.error(`${colors.red}Error details:${colors.reset}`, error);
       console.log(`\n${colors.yellow}Common Issues:${colors.reset}`);
       console.log(`1. Invalid API key - regenerate at https://resend.com/api-keys`);
@@ -122,7 +122,7 @@ Test email sent at ${new Date().toLocaleString()}
       process.exit(1);
     }
 
-    console.log(`${colors.green}✅ SUCCESS: Test email sent!${colors.reset}`);
+    console.log(`${colors.green} SUCCESS: Test email sent!${colors.reset}`);
     console.log(`\n${colors.blue}Email Details:${colors.reset}`);
     console.log(`  • Email ID: ${data.id}`);
     console.log(`  • To: ${testEmailAddress}`);
@@ -139,7 +139,7 @@ Test email sent at ${new Date().toLocaleString()}
     console.log(`4. Test the forgot password flow in your Flutter app\n`);
     
   } catch (error) {
-    console.error(`\n${colors.red}❌ UNEXPECTED ERROR:${colors.reset}`, error.message);
+    console.error(`\n${colors.red} UNEXPECTED ERROR:${colors.reset}`, error.message);
     console.error(`\n${colors.red}Stack trace:${colors.reset}`, error.stack);
     process.exit(1);
   }

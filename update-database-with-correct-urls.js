@@ -27,32 +27,32 @@ const uploadedFiles = [
 ];
 
 async function testFileAccessibility() {
-  console.log('🔍 Testing file accessibility on production server...');
+  console.log('Testing file accessibility on production server...');
   
   for (const file of uploadedFiles) {
     try {
       const fileUrl = `https://elevate-backend-s28.onrender.com${file.newFileUrl}`;
-      console.log(`\n📁 Testing: ${file.title}`);
+      console.log(`\n Testing: ${file.title}`);
       console.log(`   URL: ${fileUrl}`);
       
       const response = await axios.head(fileUrl, { timeout: 10000 });
-      console.log(`   ✅ Status: ${response.status} - File accessible`);
+      console.log(`    Status: ${response.status} - File accessible`);
       
     } catch (error) {
-      console.log(`   ❌ Error: ${error.response?.status || error.message}`);
+      console.log(`    Error: ${error.response?.status || error.message}`);
     }
   }
 }
 
 async function updateDatabaseUrls() {
-  console.log('\n🔄 Updating database URLs to point to uploaded files...');
+  console.log('\n Updating database URLs to point to uploaded files...');
   
   for (const file of uploadedFiles) {
     try {
-      console.log(`\n📝 Updating: ${file.title}`);
-      console.log(`   ID: ${file.id}`);
-      console.log(`   New file URL: ${file.newFileUrl}`);
-      console.log(`   New thumbnail URL: ${file.newThumbnailUrl}`);
+      console.log(`\n Updating: ${file.title}`);
+      console.log(`ID: ${file.id}`);
+      console.log(`New file URL: ${file.newFileUrl}`);
+      console.log(`New thumbnail URL: ${file.newThumbnailUrl}`);
       
       const updateData = {
         fileUrl: file.newFileUrl,
@@ -66,10 +66,10 @@ async function updateDatabaseUrls() {
         }
       });
       
-      console.log(`   ✅ Update successful: ${response.data.message || 'Updated'}`);
+      console.log(`Update successful: ${response.data.message || 'Updated'}`);
       
     } catch (error) {
-      console.error(`   ❌ Error updating ${file.title}:`, error.response?.data || error.message);
+      console.error(`Error updating ${file.title}:`, error.response?.data || error.message);
     }
     
     // Wait between updates
@@ -78,7 +78,7 @@ async function updateDatabaseUrls() {
 }
 
 async function verifyDatabaseUpdate() {
-  console.log('\n🔍 Verifying database updates...');
+  console.log('\n Verifying database updates...');
   
   try {
     const response = await axios.get(`${BASE_API_URL}/music/admin`, {
@@ -88,29 +88,29 @@ async function verifyDatabaseUpdate() {
     });
     
     const musicRecords = response.data;
-    console.log(`📊 Found ${musicRecords.length} music records`);
+    console.log(` Found ${musicRecords.length} music records`);
     
     musicRecords.forEach(record => {
-      console.log(`\n🎵 ${record.title}:`);
+      console.log(`\n ${record.title}:`);
       console.log(`   File URL: ${record.fileUrl}`);
       console.log(`   Thumbnail URL: ${record.thumbnailUrl}`);
       
       // Check if URLs are now using production paths
       if (record.fileUrl && record.fileUrl.startsWith('/uploads/')) {
-        console.log(`   ✅ File URL is now relative (production ready)`);
+        console.log(`    File URL is now relative (production ready)`);
       } else if (record.fileUrl && record.fileUrl.includes('192.168.0.100')) {
-        console.log(`   ❌ File URL still has local IP`);
+        console.log(`    File URL still has local IP`);
       }
       
       if (record.thumbnailUrl && record.thumbnailUrl.startsWith('/uploads/')) {
-        console.log(`   ✅ Thumbnail URL is now relative (production ready)`);
+        console.log(`    Thumbnail URL is now relative (production ready)`);
       } else if (record.thumbnailUrl && record.thumbnailUrl.includes('192.168.0.100')) {
-        console.log(`   ❌ Thumbnail URL still has local IP`);
+        console.log(`    Thumbnail URL still has local IP`);
       }
     });
     
   } catch (error) {
-    console.error('❌ Error verifying database:', error.response?.data || error.message);
+    console.error(' Error verifying database:', error.response?.data || error.message);
   }
 }
 
@@ -125,11 +125,11 @@ async function main() {
     // Verify the updates
     await verifyDatabaseUpdate();
     
-    console.log('\n🎉 Database update process completed!');
-    console.log('🔄 Now restart your Flutter app to test music playback');
+    console.log('\n Database update process completed!');
+    console.log('Now restart your Flutter app to test music playback');
     
   } catch (error) {
-    console.error('❌ Error in main process:', error);
+    console.error(' Error in main process:', error);
   }
 }
 

@@ -41,11 +41,11 @@ const missingFiles = [
 
 async function downloadAndUploadFile(fileInfo) {
   try {
-    console.log(`\n🔄 Processing: ${fileInfo.name}`);
+    console.log(`\n Processing: ${fileInfo.name}`);
     console.log(`   Local URL: ${fileInfo.localPath}`);
     
     // Download file from local server
-    console.log('   📥 Downloading file...');
+    console.log('Downloading file...');
     const response = await axios.get(fileInfo.localPath, {
       responseType: 'stream',
       timeout: 30000
@@ -59,7 +59,7 @@ async function downloadAndUploadFile(fileInfo) {
     });
     
     // Upload to production server
-    console.log('   📤 Uploading to production server...');
+    console.log('    Uploading to production server...');
     const uploadResponse = await axios.post(PRODUCTION_API_URL, formData, {
       headers: {
         'Authorization': `Bearer ${ADMIN_TOKEN}`,
@@ -68,8 +68,8 @@ async function downloadAndUploadFile(fileInfo) {
       timeout: 60000
     });
     
-    console.log('   ✅ Upload successful!');
-    console.log('   📊 Response:', uploadResponse.data);
+    console.log('Upload successful!');
+    console.log('Response:', uploadResponse.data);
     
     return {
       success: true,
@@ -78,7 +78,7 @@ async function downloadAndUploadFile(fileInfo) {
     };
     
   } catch (error) {
-    console.error(`   ❌ Error processing ${fileInfo.name}:`, error.response?.data || error.message);
+    console.error(`Error processing ${fileInfo.name}:`, error.response?.data || error.message);
     return {
       success: false,
       file: fileInfo.name,
@@ -88,8 +88,8 @@ async function downloadAndUploadFile(fileInfo) {
 }
 
 async function uploadMissingFiles() {
-  console.log('🚀 Starting upload of missing files to production server...');
-  console.log(`📊 Total files to upload: ${missingFiles.length}`);
+  console.log('Starting upload of missing files to production server...');
+  console.log(` Total files to upload: ${missingFiles.length}`);
   
   const results = [];
   
@@ -102,22 +102,22 @@ async function uploadMissingFiles() {
   }
   
   // Summary
-  console.log('\n📊 Upload Summary:');
+  console.log('\n Upload Summary:');
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
   
-  console.log(`✅ Successful uploads: ${successful}`);
-  console.log(`❌ Failed uploads: ${failed}`);
+  console.log(` Successful uploads: ${successful}`);
+  console.log(` Failed uploads: ${failed}`);
   
   if (failed > 0) {
-    console.log('\n❌ Failed files:');
+    console.log('\n Failed files:');
     results.filter(r => !r.success).forEach(r => {
       console.log(`   - ${r.file}: ${r.error}`);
     });
   }
   
-  console.log('\n🎉 Upload process completed!');
-  console.log('🔄 Now restart your Flutter app to test music playback');
+  console.log('\n Upload process completed!');
+  console.log('Now restart your Flutter app to test music playback');
 }
 
 // Run the upload process
