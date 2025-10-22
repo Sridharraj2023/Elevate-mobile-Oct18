@@ -413,8 +413,8 @@ This is an automated security confirmation. Please do not reply to this message.
             <ul>
               <li> Unlimited music streaming</li>
               <li> Offline downloads</li>
-              <li>🎧 High-quality audio</li>
-              <li>🚫 Ad-free experience</li>
+              <li> High-quality audio</li>
+              <li> Ad-free experience</li>
             </ul>
             
             <div style="text-align: center;">
@@ -457,7 +457,7 @@ This is an automated security confirmation. Please do not reply to this message.
             <p><strong>URGENT:</strong> Your Elevate subscription will expire in just <strong>${remainingDays} days</strong>!</p>
             
             <div class="highlight">
-              <h4>🚨 Action Required:</h4>
+              <h4> Action Required:</h4>
               <p><strong>Expiry Date:</strong> ${expiryDate}</p>
               <p><strong>Days Remaining:</strong> ${remainingDays}</p>
             </div>
@@ -489,7 +489,7 @@ This is an automated security confirmation. Please do not reply to this message.
       <body>
         <div class="container">
           <div class="header">
-            <h1>🚨 Elevate Music</h1>
+            <h1> Elevate Music</h1>
             <h2>LAST CHANCE: Subscription Expires Tomorrow!</h2>
           </div>
           <div class="content">
@@ -522,7 +522,7 @@ This is an automated security confirmation. Please do not reply to this message.
       <body>
         <div class="container">
           <div class="header">
-            <h1>📵 Elevate Music</h1>
+            <h1> Elevate Music</h1>
             <h2>Subscription Expired</h2>
           </div>
           <div class="content">
