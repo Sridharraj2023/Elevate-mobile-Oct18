@@ -82,7 +82,9 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:5173',
       'http://127.0.0.1:3000',
-      'http://192.168.1.7:3000'
+      'http://192.168.1.7:3000',
+      'http://172.234.201.117:5173',
+      'http://172.234.201.117:5174'
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
