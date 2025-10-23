@@ -84,14 +84,16 @@ const corsOptions = {
       'http://127.0.0.1:3000',
       'http://192.168.1.7:3000',
       'http://172.234.201.117:5173',
-      'http://172.234.201.117:5174'
+      'http://172.234.201.117:5174',
+      'http://172.232.30.46:5173',
+      'http://172.232.30.46:5174'
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      // For development, allow any local network origin
-      if (origin.includes('192.168.') || origin.includes('localhost') || origin.includes('127.0.0.1')) {
+      // For development, allow any local network origin including 172.x.x.x range
+      if (origin.includes('192.168.') || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('172.')) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -101,11 +103,20 @@ const corsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Range', 'If-Range'],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
 
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+
+// Explicit OPTIONS handler for all routes
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,HEAD');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,Accept,Range,If-Range');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.sendStatus(200);
+});
 
 
 
